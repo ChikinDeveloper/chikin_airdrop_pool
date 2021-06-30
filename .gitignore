@@ -1,0 +1,7 @@
+**/test-ledger
+**/.idea
+**/node_modules
+**/package-lock.json
+**/Cargo.lock
+program/target
+client_rust/target
