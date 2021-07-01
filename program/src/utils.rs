@@ -38,7 +38,7 @@ pub fn init_pool_account<'a>(
     let rent = Rent::from_account_info(rent_sysvar)?;
 
     // Create account
-    println!("init_pool_account: pool_account={}, data.len={}", pool_account.key, pool_account.data.borrow().len());
+    // println!("init_pool_account: pool_account={}, data.len={}", pool_account.key, pool_account.data.borrow().len());
     invoke_signed(
         &system_instruction::create_account(
             funder.key,

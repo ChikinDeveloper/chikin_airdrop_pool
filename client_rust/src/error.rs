@@ -9,6 +9,7 @@ pub enum AirdropPoolClientError {
         balance: u64,
         required: u64,
     },
+    RpcClientError,
 }
 
 impl Error for AirdropPoolClientError {

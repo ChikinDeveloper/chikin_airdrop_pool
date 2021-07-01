@@ -3,8 +3,8 @@ use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 
-use chikin_airdrop::config as program_config;
-use chikin_airdrop::state::{ChikinAirdropPool, ChikinAirdropUser};
+use chikin_airdrop_pool::config as program_config;
+use chikin_airdrop_pool::state::{AirdropPool, AirdropClaimer};
 use solana_client::client_error::ClientError;
 use solana_client::rpc_client::RpcClient;
 use solana_program::program_pack::Pack;
@@ -50,8 +50,8 @@ impl TestAccount {
         TestAccount { keypair }
     }
 
-    pub fn create_token_account(&self, token_program: Pubkey, token_mint: Pubkey) -> Pubkey {
-        println!("create_spl_token_account(token_mint={})", keypair.pubkey());
+    pub fn create_token_account(&self, config: &Config, token_program: Pubkey, token_mint: Pubkey) -> Pubkey {
+        println!("create_spl_token_account(token_mint={})", token_mint);
 
         let token_account_id = Pubkey::new_unique();
         let minimum_balance_for_rent_exemption = config.rpc_client
@@ -76,10 +76,7 @@ impl TestAccount {
             Some(&self.keypair.pubkey()),
         );
 
-        let mut signers = vec![
-            self.keypair.pubkey(),
-            token_account_id,
-        ];
+        let mut signers = vec![&self.keypair];
         let (recent_blockhash, _) = config.rpc_client.get_recent_blockhash().unwrap();
         config.check_fee_payer_balance(1).unwrap(); // TODO
         signers.sort_by_key(|e| e.pubkey());
@@ -151,8 +148,8 @@ pub fn create_spl_token(config: &Config,
     Ok(())
 }
 
-pub fn debug_program_account(tag: &str, config: &Config) {
-    let (program_account_id, _) = program_config::get_program_account_id(&config.id_config.program);
+pub fn debug_pool_account(tag: &str, config: &Config, token_mint: Pubkey) {
+    let (program_account_id, _) = program_config::get_pool_account(&config.id_config.program, &token_mint);
     let program_account = client::get_airdrop_pool(&config.rpc_client, &program_account_id).unwrap();
     println!("{} : {:?}", tag, program_account);
 }
@@ -163,8 +160,8 @@ pub fn debug_token_account(tag: &str, config: &Config, pubkey: &Pubkey) {
     println!("{} : {:?}", tag, account);
 }
 
-pub fn get_airdrop_pool(config: &Config) -> ChikinAirdropPool {
-    let (program_account_id, _) = program_config::get_program_account_id(&config.id_config.program);
+pub fn get_pool_account(config: &Config, token_mint: Pubkey) -> AirdropPool {
+    let (program_account_id, _) = program_config::get_pool_account(&config.id_config.program, &token_mint);
     client::get_airdrop_pool(&config.rpc_client, &program_account_id).unwrap()
 }
 

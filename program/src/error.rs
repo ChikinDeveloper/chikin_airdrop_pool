@@ -17,10 +17,15 @@ pub enum AirdropPoolError {
     #[error("PoolTokenAccountKeyMismatch")]
     PoolTokenAccountKeyMismatch,
 
-    #[error("UserTokenAccountKeyMismatch")]
+    #[error("UserAccountKeyMismatch")]
     UserAccountKeyMismatch,
     #[error("UserTokenAccountKeyMismatch")]
     UserTokenAccountKeyMismatch,
+
+    #[error("ReferrerAccountKeyMismatch")]
+    ReferrerAccountKeyMismatch,
+    #[error("ReferrerTokenAccountKeyMismatch")]
+    ReferrerTokenAccountKeyMismatch,
 
     #[error("InsufficientBalance")]
     InsufficientBalance,

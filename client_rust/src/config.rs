@@ -1,5 +1,7 @@
-use chikin_airdrop::instruction::ChikinAirdropInstruction;
-use chikin_airdrop::state::{ChikinAirdropPool, ChikinAirdropUser};
+use std::str::FromStr;
+
+use chikin_airdrop_pool::instruction::AirdropPoolInstruction;
+use chikin_airdrop_pool::state::{AirdropClaimer, AirdropPool};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk;
 use solana_sdk::native_token::Sol;
@@ -8,10 +10,9 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::transaction::Transaction;
 use spl_token;
-use std::str::FromStr;
-use std::error::Error;
-use crate::error::AirdropPoolClientResult;
+
 use crate::error::AirdropPoolClientError;
+use crate::error::AirdropPoolClientResult;
 
 pub struct Config {
     pub rpc_client: RpcClient,
@@ -50,7 +51,8 @@ impl Config {
 
     pub fn check_fee_payer_balance(&self,
                                    required_balance: u64) -> AirdropPoolClientResult<()> {
-        let balance = self.rpc_client.get_balance(&self.fee_payer.pubkey())?;
+        let balance = self.rpc_client.get_balance(&self.fee_payer.pubkey())
+            .map_err(|_| AirdropPoolClientError::RpcClientError)?;
         if balance < required_balance {
             Err(AirdropPoolClientError::InsufficientBalanceForFees {
                 balance,

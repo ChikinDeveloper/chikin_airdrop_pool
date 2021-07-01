@@ -45,14 +45,14 @@ pub fn process_initialize(
     let pool_account = next_account_info(accounts_iter)?;
     let pool_token_account = next_account_info(accounts_iter)?;
 
-    println!("process_initialize: funder={}, (owner={})", funder.key, funder.owner);
-    println!("process_initialize: program={}, (owner={})", program.key, program.owner);
-    println!("process_initialize: rent_sysvar={}, (owner={})", rent_sysvar.key, rent_sysvar.owner);
-    println!("process_initialize: system_program={}, (owner={})", system_program.key, system_program.owner);
-    println!("process_initialize: token_program={}, (owner={})", token_program.key, token_program.owner);
-    println!("process_initialize: token_mint={}, (owner={})", token_mint.key, token_mint.owner);
-    println!("process_initialize: pool_account={}, (owner={})", pool_account.key, pool_account.owner);
-    println!("process_initialize: pool_token_account={}, (owner={})", pool_token_account.key, pool_token_account.owner);
+    // println!("process_initialize: funder={}, (owner={})", funder.key, funder.owner);
+    // println!("process_initialize: program={}, (owner={})", program.key, program.owner);
+    // println!("process_initialize: rent_sysvar={}, (owner={})", rent_sysvar.key, rent_sysvar.owner);
+    // println!("process_initialize: system_program={}, (owner={})", system_program.key, system_program.owner);
+    // println!("process_initialize: token_program={}, (owner={})", token_program.key, token_program.owner);
+    // println!("process_initialize: token_mint={}, (owner={})", token_mint.key, token_mint.owner);
+    // println!("process_initialize: pool_account={}, (owner={})", pool_account.key, pool_account.owner);
+    // println!("process_initialize: pool_token_account={}, (owner={})", pool_token_account.key, pool_token_account.owner);
 
     //
 
@@ -112,14 +112,14 @@ pub fn process_claim(
     let user_account = next_account_info(accounts_iter)?;
     let user_token_account = next_account_info(accounts_iter)?;
 
-    println!("process_claim: program={}, (owner={})", program.key, program.owner);
-    println!("process_claim: token_program={}, (owner={})", token_program.key, token_program.owner);
-    println!("process_claim: token_mint={}, (owner={})", token_mint.key, token_mint.owner);
-    println!("process_claim: pool_account={}, (owner={})", pool_account.key, pool_account.owner);
-    println!("process_claim: pool_token_account={}, (owner={})", pool_token_account.key, pool_token_account.owner);
-    println!("process_claim: user_account={}, (owner={})", user_account.key, user_account.owner);
-    println!("process_claim: user_token_account={}, (owner={})", user_token_account.key, user_token_account.owner);
-    println!("process_claim: referrer={}", referrer);
+    // println!("process_claim: program={}, (owner={})", program.key, program.owner);
+    // println!("process_claim: token_program={}, (owner={})", token_program.key, token_program.owner);
+    // println!("process_claim: token_mint={}, (owner={})", token_mint.key, token_mint.owner);
+    // println!("process_claim: pool_account={}, (owner={})", pool_account.key, pool_account.owner);
+    // println!("process_claim: pool_token_account={}, (owner={})", pool_token_account.key, pool_token_account.owner);
+    // println!("process_claim: user_account={}, (owner={})", user_account.key, user_account.owner);
+    // println!("process_claim: user_token_account={}, (owner={})", user_token_account.key, user_token_account.owner);
+    // println!("process_claim: referrer={}", referrer);
 
     // Validate keys
     if program.key != program_id {
@@ -161,6 +161,16 @@ pub fn process_claim(
             referrer_account = next_account_info(accounts_iter)?;
             referrer_token_account = next_account_info(accounts_iter)?;
 
+            if referrer_account.key != &expected_referrer_account_id {
+                return Err(AirdropPoolError::ReferrerAccountKeyMismatch.into());
+            }
+
+            referrer_account_state = AirdropClaimer::unpack_from_slice(&referrer_account.data.borrow())?;
+
+            if &referrer_account_state.token_account != referrer_token_account.key {
+                return Err(AirdropPoolError::ReferrerTokenAccountKeyMismatch.into());
+            }
+
             utils::transfer_to(program.clone(),
                                token_program.clone(),
                                token_mint.clone(),
@@ -171,7 +181,6 @@ pub fn process_claim(
                                config::REWARD_PER_REFERRAL)
                 .map_err(|_| AirdropPoolError::TransferToReferrerFailed)?;
 
-            referrer_account_state = AirdropClaimer::unpack_from_slice(&referrer_account.data.borrow())?;
             if !referrer_account_state.has_referrer() { break; }
             if depth > config::MAX_REFERRAL_DEPTH { break; }
 
@@ -194,8 +203,8 @@ pub fn process_claim(
                        user_token_account.clone(),
                        &pool_account_state,
                        config::REWARD_PER_ACCOUNT)
-        .map_err(|e| {
-            println!("GOT ERR {:?}", e);
+        .map_err(|_e| {
+            // println!("GOT ERR {:?}", e);
             AirdropPoolError::TransferToUserFailed
         })?;
 

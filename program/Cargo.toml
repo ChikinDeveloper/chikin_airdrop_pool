@@ -5,6 +5,7 @@ description = "Example template program written in Rust"
 authors = ["Many chikins <chikindeveloper@protonmail.com>"]
 license = "Apache-2.0"
 homepage = "https://chikin.run/"
+edition = "2018"
 
 [features]
 test-bpf = []

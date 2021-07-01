@@ -3,8 +3,8 @@ use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 
-use chikin_airdrop::config as program_config;
-use chikin_airdrop::state::{ChikinAirdropPool, ChikinAirdropUser};
+use chikin_airdrop_pool::config as program_config;
+use chikin_airdrop_pool::state::{AirdropPool, AirdropClaimer};
 use solana_client::client_error::ClientError;
 use solana_client::rpc_client::RpcClient;
 use solana_program::program_pack::Pack;
@@ -55,7 +55,7 @@ async fn test_initialize() {
     let (
         airdrop_pool_id,
         airdrop_pool_nonce,
-    ) = program_config::get_program_account_id(&config.id_config.program);
+    ) = program_config::get_pool_account(&config.id_config.program, &token_mint.pubkey());
     let (
         pool_token_account_id,
         pool_token_account_nonce,
@@ -74,15 +74,15 @@ async fn test_initialize() {
     // Initialize pool
     println!("test_initialize: create_pool");
     command::create(&config,
-                    token_mint.pubkey(),
+                    token_mint.pubkey()/*,
                     Some(airdrop_pool_id),
-                    Some(pool_token_account_id))
+                    Some(pool_token_account_id)*/)
         .unwrap();
 
     let airdrop_pool = config.rpc_client.get_account(&airdrop_pool_id).unwrap();
     assert_ne!(airdrop_pool.lamports, 0);
     assert_eq!(airdrop_pool.owner, config.id_config.program);
-    let airdrop_pool_data = ChikinAirdropPool::unpack(airdrop_pool.data()).unwrap();
+    let airdrop_pool_data = AirdropPool::unpack(airdrop_pool.data()).unwrap();
     assert_eq!(airdrop_pool_data.is_initialized, true);
     assert_eq!(airdrop_pool_data.token_account_id, pool_token_account_id);
     assert_eq!(airdrop_pool_data.account_id, airdrop_pool_id);
@@ -99,8 +99,9 @@ async fn test_initialize() {
     assert_eq!(pool_token_account_data.delegate, COption::None);
 
     let test_wallet = testutil::TestAccount::new(&config.rpc_client, 10_000_000);
-    let test_wallet_token_account = test_wallet.create_token_account(config.id_config.token_program,
+    let test_wallet_token_account = test_wallet.create_token_account(&config,
+                                                                     token_mint.pubkey(),
                                                                      token_mint.pubkey());
 
-    command::claim(&config, )
+    // command::claim(&config, )
 }

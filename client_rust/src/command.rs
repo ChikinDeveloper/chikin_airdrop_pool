@@ -1,6 +1,6 @@
-use chikin_airdrop::config as program_config;
-use chikin_airdrop::instruction::ChikinAirdropInstruction;
-use chikin_airdrop::state::{ChikinAirdropPool, ChikinAirdropUser};
+use chikin_airdrop_pool::config as program_config;
+use chikin_airdrop_pool::instruction::AirdropPoolInstruction;
+use chikin_airdrop_pool::state::{AirdropPool, AirdropClaimer};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::native_token::Sol;
 use solana_sdk::program_pack::Pack;
@@ -17,7 +17,7 @@ type CommandResult = Result<(), Error>;
 pub fn create(config: &Config, token_mint: Pubkey) -> CommandResult {
     let mut transaction = Transaction::new_with_payer(
         &[
-            ChikinAirdropInstruction::initialize(
+            AirdropPoolInstruction::initialize(
                 config.fee_payer.pubkey(),
                 config.id_config.program,
                 config.id_config.rent_sysvar,
@@ -46,10 +46,10 @@ pub fn create(config: &Config, token_mint: Pubkey) -> CommandResult {
     Ok(())
 }
 
-pub fn claim(config: &Config, claimer: Pubkey, referrer: Option<Pubkey>) -> CommandResult {
+pub fn claim(config: &Config, token_mint: Pubkey, claimer: Pubkey, referrer: Option<Pubkey>) -> CommandResult {
     let mut transaction = Transaction::new_with_payer(
         &[
-            ChikinAirdropInstruction::claim(
+            AirdropPoolInstruction::claim(
                 config.fee_payer.pubkey(),
                 config.id_config.program,
                 config.id_config.token_program,
