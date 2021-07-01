@@ -38,7 +38,7 @@ async fn test_initialize() {
         let rpc_client = RpcClient::new_with_commitment(rpc_url.to_string(),
                                                         CommitmentConfig::confirmed());
         let fee_payer = testutil::new_account_with_lamports(&rpc_client, 10_000_000);
-        let program_id = "GC2MzVrqKfnE8RArGMWVNgVx64qzQF85QrFJFkR5XoaP";
+        let program_id = "3K1Td3DmxWt2rxT1H4furqWJyZu3nuc7QQs6W5rtHY3P";
 
         Config {
             rpc_client,
@@ -100,8 +100,8 @@ async fn test_initialize() {
 
     let test_wallet = testutil::TestAccount::new(&config.rpc_client, 10_000_000);
     let test_wallet_token_account = test_wallet.create_token_account(&config,
-                                                                     token_mint.pubkey(),
+                                                                     spl_token::id(),
                                                                      token_mint.pubkey());
 
-    // command::claim(&config, )
+    command::claim(&config, token_mint.pubkey(), test_wallet_token_account, None);
 }

@@ -46,7 +46,7 @@ pub fn create(config: &Config, token_mint: Pubkey) -> CommandResult {
     Ok(())
 }
 
-pub fn claim(config: &Config, token_mint: Pubkey, claimer: Pubkey, referrer: Option<Pubkey>) -> CommandResult {
+pub fn claim(config: &Config, token_mint: Pubkey, claimer_token_account: Pubkey, referrer: Option<Pubkey>) -> CommandResult {
     let mut transaction = Transaction::new_with_payer(
         &[
             AirdropPoolInstruction::claim(
@@ -54,7 +54,7 @@ pub fn claim(config: &Config, token_mint: Pubkey, claimer: Pubkey, referrer: Opt
                 config.id_config.program,
                 config.id_config.token_program,
                 token_mint,
-                claimer,
+                claimer_token_account,
                 referrer,
             ),
         ],

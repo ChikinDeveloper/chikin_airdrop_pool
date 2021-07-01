@@ -31,7 +31,7 @@ async fn test_initialize() {
     let rent_sysvar_id = solana_program::sysvar::rent::id();
     let system_program_id = solana_program::system_program::id();
     let token_program_id = spl_token::id();
-    let token_mint_id = Pubkey::from_str("8s9FCz99Wcr3dHpiauFRi6bLXzshXfcGTfgQE7UEopVx").unwrap();
+    let token_mint_id = Pubkey::from_str("3K1Td3DmxWt2rxT1H4furqWJyZu3nuc7QQs6W5rtHY3P").unwrap();
     let (program_account_id, _) = config::get_pool_account(&program_id, &token_mint_id);
     let program_token_account_id = Pubkey::new_unique();
 

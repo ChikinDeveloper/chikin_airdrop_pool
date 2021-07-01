@@ -53,11 +53,12 @@ impl AirdropPoolInstruction {
         program: Pubkey,
         token_program: Pubkey,
         token_mint: Pubkey,
-        claimer: Pubkey,
+        claimer_token_account: Pubkey,
         referrer: Option<Pubkey>,
     ) -> Instruction {
         let (pool_account, _) = config::get_pool_account(&program, &token_mint);
         let (pool_token_account, _) = config::get_pool_token_account(&program, &pool_account);
+        let (claimer_account, _) = config::get_claimer_account(&program, &pool_account, &claimer_token_account);
 
         let object = AirdropPoolInstruction::Claim {
             referrer: referrer.unwrap_or_else(|| Pubkey::default()),
@@ -69,9 +70,11 @@ impl AirdropPoolInstruction {
             AccountMeta::new(payer, true),
             AccountMeta::new_readonly(program, false),
             AccountMeta::new_readonly(token_program, false),
+            AccountMeta::new_readonly(token_mint, false),
             AccountMeta::new(pool_account, false),
             AccountMeta::new(pool_token_account, false),
-            AccountMeta::new(claimer, false),
+            AccountMeta::new(claimer_account, false),
+            AccountMeta::new(claimer_token_account, false),
         ];
 
         Instruction::new_with_bytes(program, &data, accounts)

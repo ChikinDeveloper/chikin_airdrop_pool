@@ -53,20 +53,21 @@ impl TestAccount {
     pub fn create_token_account(&self, config: &Config, token_program: Pubkey, token_mint: Pubkey) -> Pubkey {
         println!("create_spl_token_account(token_mint={})", token_mint);
 
-        let token_account_id = Pubkey::new_unique();
+        // let token_account_id = Pubkey::new_unique();
+        let token_account_keypair = Keypair::new();
         let minimum_balance_for_rent_exemption = config.rpc_client
             .get_minimum_balance_for_rent_exemption(SplTokenAccount::LEN).unwrap();
 
         let instructions = vec![
             solana_sdk::system_instruction::create_account(
                 &self.keypair.pubkey(),
-                &token_account_id,
+                &token_account_keypair.pubkey(),
                 minimum_balance_for_rent_exemption,
                 SplTokenAccount::LEN as u64,
                 &token_program),
             spl_token::instruction::initialize_account(
                 &token_program,
-                &token_account_id,
+                &token_account_keypair.pubkey(),
                 &token_mint,
                 &self.keypair.pubkey()).unwrap(),
         ];
@@ -76,7 +77,7 @@ impl TestAccount {
             Some(&self.keypair.pubkey()),
         );
 
-        let mut signers = vec![&self.keypair];
+        let mut signers = vec![&self.keypair, &token_account_keypair];
         let (recent_blockhash, _) = config.rpc_client.get_recent_blockhash().unwrap();
         config.check_fee_payer_balance(1).unwrap(); // TODO
         signers.sort_by_key(|e| e.pubkey());
@@ -84,7 +85,7 @@ impl TestAccount {
         transaction.sign(&signers, recent_blockhash);
         config.send_transaction(transaction).unwrap();
 
-        return token_account_id
+        return token_account_keypair.pubkey()
     }
 }
 
