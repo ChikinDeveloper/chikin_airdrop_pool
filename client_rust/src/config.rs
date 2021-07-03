@@ -1,13 +1,9 @@
 use std::str::FromStr;
 
-use chikin_airdrop_pool::instruction::AirdropPoolInstruction;
-use chikin_airdrop_pool::state::{AirdropClaimer, AirdropPool};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk;
-use solana_sdk::native_token::Sol;
-use solana_sdk::program_pack::Pack;
 use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::{Keypair, Signer};
+use solana_sdk::signature::Signer;
 use solana_sdk::transaction::Transaction;
 use spl_token;
 
@@ -41,7 +37,7 @@ impl Config {
     pub fn sign_and_send_transaction(&self,
                                      mut transaction: Transaction,
                                      mut signers: Vec<Box<dyn Signer>>) -> solana_client::client_error::Result<()> {
-        let (recent_blockhash, fee_calculator) = self.rpc_client.get_recent_blockhash()?;
+        let (recent_blockhash, _fee_calculator) = self.rpc_client.get_recent_blockhash()?;
         self.check_fee_payer_balance(1).unwrap(); // TODO
         signers.sort_by_key(|e| e.pubkey());
         signers.dedup();

@@ -1,12 +1,6 @@
-use chikin_airdrop_pool::config as program_config;
 use chikin_airdrop_pool::instruction::AirdropPoolInstruction;
-use chikin_airdrop_pool::state::{AirdropPool, AirdropClaimer};
-use solana_client::rpc_client::RpcClient;
-use solana_sdk::native_token::Sol;
-use solana_sdk::program_pack::Pack;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
-use solana_sdk::signer::unique_signers;
 use solana_sdk::transaction::Transaction;
 use crate::client;
 
@@ -42,7 +36,7 @@ pub fn initialize(
         Some(&config.fee_payer.pubkey()),
     );
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let (recent_blockhash, _fee_calculator) = config.rpc_client.get_recent_blockhash()?;
 
     config.check_fee_payer_balance(1)?; // TODO
 
@@ -97,7 +91,7 @@ pub fn claim(config: &Config, token_mint: Pubkey, pool_account: Pubkey, claimer_
         Some(&config.fee_payer.pubkey()),
     );
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let (recent_blockhash, _fee_calculator) = config.rpc_client.get_recent_blockhash()?;
 
     config.check_fee_payer_balance(1)?; // TODO
 

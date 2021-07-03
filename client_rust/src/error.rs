@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Formatter, Write, Display};
+use std::fmt::{Debug, Formatter, Display};
 use std::error::Error;
 
 pub type AirdropPoolClientResult<T> = Result<T, AirdropPoolClientError>;

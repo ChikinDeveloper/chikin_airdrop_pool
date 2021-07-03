@@ -91,7 +91,7 @@ async fn test_initialize() {
     let airdrop_pool = config.rpc_client.get_account(&pool_account_id).unwrap();
     assert_ne!(airdrop_pool.lamports, 0);
     assert_eq!(airdrop_pool.owner, config.id_config.program);
-    let airdrop_pool_data = AirdropPool::unpack(airdrop_pool.data());
+    let airdrop_pool_data = AirdropPool::unpack(airdrop_pool.data()).unwrap();
     assert_eq!(airdrop_pool_data.is_initialized, 1);
     assert_eq!(airdrop_pool_data.token_account_id, pool_token_account_id);
     assert_eq!(airdrop_pool_data.account_id, pool_account_id);
