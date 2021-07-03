@@ -62,6 +62,10 @@ impl Config {
             Ok(())
         }
     }
+
+    pub fn get_fee_payer_balance(&self) -> u64 {
+        self.rpc_client.get_account(&self.fee_payer.pubkey()).unwrap().lamports
+    }
 }
 
 #[derive(Debug)]

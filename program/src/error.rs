@@ -1,7 +1,8 @@
 //! Error types
 
 use num_derive::FromPrimitive;
-use solana_program::{decode_error::DecodeError, program_error::ProgramError};
+use solana_program::decode_error::DecodeError;
+use solana_program::program_error::ProgramError;
 use thiserror::Error;
 
 /// Errors that may be returned by the program.
@@ -9,6 +10,8 @@ use thiserror::Error;
 pub enum AirdropPoolError {
     #[error("ProgramKeyMismatch")]
     ProgramKeyMismatch,
+    #[error("RentSysvarKeyMismatch")]
+    RentSysvarKeyMismatch,
     #[error("TokenProgramKeyMismatch")]
     TokenProgramKeyMismatch,
 
@@ -42,6 +45,11 @@ pub enum AirdropPoolError {
     TransferToUserFailed,
     #[error("TransferToReferrerFailed")]
     TransferToReferrerFailed,
+
+    #[error("FailedToPackData")]
+    FailedToPackData,
+    #[error("FailedToUnpackData")]
+    FailedToUnpackData,
 }
 
 impl From<AirdropPoolError> for ProgramError {

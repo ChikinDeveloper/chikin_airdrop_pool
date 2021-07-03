@@ -10,6 +10,7 @@ pub enum AirdropPoolClientError {
         required: u64,
     },
     RpcClientError,
+    ReferrerDidNotClaim,
 }
 
 impl Error for AirdropPoolClientError {

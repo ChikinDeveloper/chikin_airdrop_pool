@@ -4,6 +4,8 @@ extern crate num_derive;
 extern crate thiserror;
 
 #[macro_use]
+pub mod packable;
+#[macro_use]
 pub mod config;
 pub mod instruction;
 pub mod state;

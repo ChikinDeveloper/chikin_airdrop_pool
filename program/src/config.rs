@@ -1,10 +1,6 @@
 use solana_program::pubkey::Pubkey;
 use spl_associated_token_account;
 
-pub type AmountType = u64;
-pub type DurationType = u64;
-pub type TimestampType = u64;
-
 #[inline(always)]
 pub fn is_valid_pubkey(pubkey: &Pubkey) -> bool {
     pubkey.ne(&Pubkey::default())
@@ -54,30 +50,30 @@ macro_rules! pool_token_account_seeds {
     };
 }
 
-pub fn get_user_account(program: &Pubkey,
-                        pool_account: &Pubkey,
-                        user_wallet: &Pubkey) -> (Pubkey, u8) {
+pub fn get_claimer_account(program: &Pubkey,
+                           pool_account: &Pubkey,
+                           claimer_wallet: &Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(&[
         &program.to_bytes(),
         &pool_account.to_bytes(),
-        &user_wallet.to_bytes(),
+        &claimer_wallet.to_bytes(),
         "claimer_account".as_bytes(),
     ], program)
 }
 
 #[macro_export]
-macro_rules! user_account_seeds {
-    ($program:expr, $pool_account:expr, $user_wallet: expr, $bump_seed:expr) => {
+macro_rules! claimer_account_seeds {
+    ($program:expr, $pool_account:expr, $claimer_wallet: expr, $bump_seed:expr) => {
         &[
             $program.as_ref(),
             $pool_account.as_ref(),
-            $user_wallet.as_ref(),
+            $claimer_wallet.as_ref(),
             "claimer_account".as_bytes(),
             &[$bump_seed],
         ]
     };
 }
 
-pub fn get_user_token_account(token_mint: &Pubkey, user_wallet: &Pubkey) -> Pubkey {
-    return spl_associated_token_account::get_associated_token_address(token_mint, user_wallet);
+pub fn get_claimer_token_account(token_mint: &Pubkey, user_wallet: &Pubkey) -> Pubkey {
+    return spl_associated_token_account::get_associated_token_address(user_wallet, token_mint);
 }

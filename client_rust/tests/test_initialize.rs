@@ -4,7 +4,8 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use chikin_airdrop_pool::config as program_config;
-use chikin_airdrop_pool::state::{AirdropPool, AirdropClaimer};
+use chikin_airdrop_pool::packable::Packable;
+use chikin_airdrop_pool::state::{AirdropClaimer, AirdropPool};
 use solana_client::client_error::ClientError;
 use solana_client::rpc_client::RpcClient;
 use solana_program::program_pack::Pack;
@@ -51,61 +52,78 @@ async fn test_initialize() {
         }
     };
 
-    let token_mint = Keypair::new();
+    println!("test_initialize: fee_payer_balance1={}", config.get_fee_payer_balance());
+    println!("test_initialize: create test token");
+    let test_token = testutil::test_token::TestToken::create(&config);
+    println!("test_initialize: test_token.mint_authority={}", test_token.mint_authority.pubkey());
+    println!("test_initialize: test_token.mint={}", test_token.mint.pubkey());
+    println!("test_initialize: fee_payer_balance2={}", config.get_fee_payer_balance());
+
+    let pool_account_nonce = [1, 0, 1, 0];
+    let reward_per_account = 500;
+    let reward_per_referral = 100;
+    let max_referral_depth = 2;
     let (
-        airdrop_pool_id,
-        airdrop_pool_nonce,
-    ) = program_config::get_pool_account(&config.id_config.program, &token_mint.pubkey());
+        pool_account_id,
+        _,
+    ) = program_config::get_pool_account(&config.id_config.program, &test_token.mint.pubkey(), &pool_account_nonce);
     let (
         pool_token_account_id,
         pool_token_account_nonce,
-    ) = program_config::get_pool_token_account(&config.id_config.program, &airdrop_pool_id);
+    ) = program_config::get_pool_token_account(&config.id_config.program, &pool_account_id);
 
     println!("test_initialize: id_config={:?}", config.id_config);
-    println!("test_initialize: token_mint_id={}", token_mint.pubkey());
-    println!("test_initialize: airdrop_pool_id={}", airdrop_pool_id);
+    println!("test_initialize: token_mint_id={}", test_token.mint.pubkey());
+    println!("test_initialize: airdrop_pool_id={}", pool_account_id);
     println!("test_initialize: pool_token_account_id={}", pool_token_account_id);
 
-    // Initialize token mint
-    println!("test_initialize: create_spl_token");
-    testutil::create_spl_token(&config, &token_mint)
-        .unwrap();
-
     // Initialize pool
+    println!("test_initialize: fee_payer_balance3={}", config.get_fee_payer_balance());
     println!("test_initialize: create_pool");
-    command::create(&config,
-                    token_mint.pubkey()/*,
-                    Some(airdrop_pool_id),
-                    Some(pool_token_account_id)*/)
+    command::initialize(&config,
+                        test_token.mint.pubkey(),
+                        pool_account_nonce,
+                        reward_per_account,
+                        reward_per_referral,
+                        max_referral_depth)
         .unwrap();
 
-    let airdrop_pool = config.rpc_client.get_account(&airdrop_pool_id).unwrap();
+    let airdrop_pool = config.rpc_client.get_account(&pool_account_id).unwrap();
     assert_ne!(airdrop_pool.lamports, 0);
     assert_eq!(airdrop_pool.owner, config.id_config.program);
-    let airdrop_pool_data = AirdropPool::unpack(airdrop_pool.data()).unwrap();
-    assert_eq!(airdrop_pool_data.is_initialized, true);
+    let airdrop_pool_data = AirdropPool::unpack(airdrop_pool.data());
+    assert_eq!(airdrop_pool_data.is_initialized, 1);
     assert_eq!(airdrop_pool_data.token_account_id, pool_token_account_id);
-    assert_eq!(airdrop_pool_data.account_id, airdrop_pool_id);
-    assert_eq!(airdrop_pool_data.account_nonce, airdrop_pool_nonce);
+    assert_eq!(airdrop_pool_data.account_id, pool_account_id);
+    assert_eq!(airdrop_pool_data.pool_account_nonce, pool_account_nonce);
 
     let pool_token_account = config.rpc_client.get_account(&pool_token_account_id).unwrap();
     assert_ne!(pool_token_account.lamports, 0);
     assert_eq!(pool_token_account.owner, config.id_config.token_program);
     let pool_token_account_data = SplTokenAccount::unpack(pool_token_account.data()).unwrap();
     assert_eq!(pool_token_account_data.state, SplTokenAccountState::Initialized);
-    assert_eq!(pool_token_account_data.owner, airdrop_pool_id);
-    assert_eq!(pool_token_account_data.mint, token_mint.pubkey());
+    assert_eq!(pool_token_account_data.owner, pool_account_id);
+    assert_eq!(pool_token_account_data.mint, test_token.mint.pubkey());
     assert_eq!(pool_token_account_data.close_authority, COption::None);
     assert_eq!(pool_token_account_data.delegate, COption::None);
 
-    let test_wallet_keypair = testutil::TestWallet::new(&config.rpc_client, 10_000_000);
-    let test_wallet_token_account_id = test_wallet_keypair.create_token_account(&config,
-                                                                                spl_token::id(),
-                                                                                token_mint.pubkey());
+    // Mint some token to pool token account
+    println!("test_initialize: fee_payer_balance4={}", config.get_fee_payer_balance());
+    println!("test_initialize: mint some token to pool token account");
+    test_token.mint(&config, 10000, &pool_token_account_id);
 
-    testutil::debug_token_account("CLUCK wallet_before", &config, &test_wallet_token_account_id);
+    //
+    println!("test_initialize: fee_payer_balance5={}", config.get_fee_payer_balance());
+    let test_claimer_1 = testutil::TestClaimer::create(&config, &test_token.mint.pubkey(), 10_000_000);
+    println!("test_initialize: test_claimer_1.wallet={}", test_claimer_1.wallet.pubkey());
+    println!("test_initialize: test_claimer_1.token_account={}", test_claimer_1.token_account);
 
-    command::claim(&config, token_mint.pubkey(), test_wallet_token_account_id, None).unwrap();
+    testutil::debug_token_account("CLUCK claimer_token_account before", &config, &test_claimer_1.token_account);
+    testutil::debug_token_account("CLUCK pool_token_account before", &config, &pool_token_account_id);
 
-    testutil::debug_token_account("CLUCK wallet_after ", &config, &test_wallet_token_account_id);
+    command::claim(&config, test_token.mint.pubkey(), pool_account_id, &test_claimer_1.wallet, None).unwrap();
+
+    testutil::debug_token_account("CLUCK claimer_token_account after ", &config, &test_claimer_1.token_account);
+    testutil::debug_token_account("CLUCK pool_token_account after", &config, &pool_token_account_id);
+    println!("test_initialize: fee_payer_balance6={}", config.get_fee_payer_balance());
 }

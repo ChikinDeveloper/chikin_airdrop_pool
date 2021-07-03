@@ -1,16 +1,15 @@
-use {
-    solana_program_test::*,
-    solana_sdk::{
-        account::Account,
-        program_pack::Pack,
-        pubkey::Pubkey,
-    },
-};
+use solana_program_test::*;
+use solana_sdk::account::Account;
+use solana_sdk::program_pack::Pack;
+use solana_sdk::pubkey::Pubkey;
 use spl_token;
 use spl_token::state::Account as SplTokenAccount;
+
 use chikin_airdrop_pool::config;
-use chikin_airdrop_pool::state::AirdropPool;
 use chikin_airdrop_pool::state::AirdropClaimer;
+use chikin_airdrop_pool::state::AirdropPool;
+use chikin_airdrop_pool::packable::Packable;
+use solana_sdk::signature::{Keypair, Signer};
 
 pub struct ProgramInfo {
     pub pool_account_id: Pubkey,
@@ -39,7 +38,7 @@ impl ProgramInfo {
             reward_per_account,
             reward_per_referral,
             max_referral_depth,
-            is_initialized: true,
+            is_initialized: 1,
         };
 
         let token_account_state = SplTokenAccount {
@@ -50,8 +49,7 @@ impl ProgramInfo {
             ..SplTokenAccount::default()
         };
 
-        let mut data_packed = vec![0; AirdropPool::LEN];
-        account_state.pack_into_slice(&mut data_packed);
+        let data_packed: Vec<u8> = account_state.pack();
         program_test.add_account(
             account_id,
             Account {
@@ -82,9 +80,8 @@ impl ProgramInfo {
 }
 
 
-#[derive(Clone)]
 pub struct UserInfo {
-    pub wallet: Pubkey,
+    pub wallet: Keypair,
     pub account: Pubkey,
     pub token_account: Pubkey,
 }
@@ -94,14 +91,23 @@ impl UserInfo {
                   program_id: Pubkey,
                   token_mint: Pubkey,
                   pool_id: Pubkey) -> UserInfo {
-        let wallet_id = Pubkey::new_unique();
+        let wallet_keypair = Keypair::new();
+        program_test.add_account(
+            wallet_keypair.pubkey(),
+            Account {
+                lamports: 10_000_000,
+                data: vec![],
+                ..Account::default()
+            },
+        );
+
         let token_account_id = {
-            let id = config::get_user_token_account(&token_mint, &wallet_id);
+            let id = config::get_claimer_token_account(&token_mint, &wallet_keypair.pubkey());
             let data = SplTokenAccount {
                 mint: token_mint,
                 amount: 0,
                 state: spl_token::state::AccountState::Initialized,
-                owner: wallet_id,
+                owner: wallet_keypair.pubkey(),
                 ..SplTokenAccount::default()
             };
             assert!(data.delegate.is_none());
@@ -120,23 +126,22 @@ impl UserInfo {
         };
 
         let account_id = {
-            let id = config::get_user_account(&program_id, &pool_id, &wallet_id).0;
-            let data = AirdropClaimer::default();
-            let mut data_packed = vec![0; AirdropClaimer::LEN];
-            data.pack_into_slice(&mut data_packed);
-            program_test.add_account(
-                id,
-                Account {
-                    lamports: 5,
-                    data: data_packed,
-                    owner: program_id,
-                    ..Account::default()
-                },
-            );
+            let id = config::get_claimer_account(&program_id, &pool_id, &wallet_keypair.pubkey()).0;
+            // let data = AirdropClaimer::default();
+            // let data_packed = data.pack();
+            // program_test.add_account(
+            //     id,
+            //     Account {
+            //         lamports: 5,
+            //         data: data_packed,
+            //         owner: program_id,
+            //         ..Account::default()
+            //     },
+            // );
             id
         };
 
-        UserInfo { wallet: wallet_id, account: account_id, token_account: token_account_id }
+        UserInfo { wallet: wallet_keypair, account: account_id, token_account: token_account_id }
     }
 
     pub async fn debug(&self, tag: &str, banks_client: &mut BanksClient) {
@@ -152,7 +157,7 @@ impl UserInfo {
             .expect("user.account")
             .expect("user.account not found");
 
-        let account_state = AirdropClaimer::unpack_unchecked(&account.data).unwrap();
+        let account_state: AirdropClaimer = AirdropClaimer::unpack(&account.data);
         let token_account_state = SplTokenAccount::unpack(&token_account.data).unwrap();
 
         println!("debug_user({}) : account.key={}, account.owner={}", tag, self.account, account.owner);

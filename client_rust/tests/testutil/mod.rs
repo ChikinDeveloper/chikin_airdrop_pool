@@ -4,7 +4,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use chikin_airdrop_pool::config as program_config;
-use chikin_airdrop_pool::state::{AirdropPool, AirdropClaimer};
+use chikin_airdrop_pool::state::{AirdropClaimer, AirdropPool};
 use solana_client::client_error::ClientError;
 use solana_client::rpc_client::RpcClient;
 use solana_program::program_pack::Pack;
@@ -19,6 +19,7 @@ use solana_sdk::rent::Rent;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 use solana_sdk::transaction::Transaction;
+use spl_associated_token_account;
 use spl_token::state::Account as SplTokenAccount;
 use spl_token::state::AccountState as SplTokenAccountState;
 use spl_token::state::Mint as SplTokenMint;
@@ -27,65 +28,48 @@ use client_rust::client;
 use client_rust::command;
 use client_rust::config::{Config, IdConfig};
 
+pub mod test_token;
+
 // TestUser
 
-pub struct TestWallet {
-    pub keypair: Keypair,
+pub struct TestClaimer {
+    pub wallet: Keypair,
+    pub token_account: Pubkey,
 }
 
-impl TestWallet {
-    pub fn new(rpc_client: &RpcClient, lamports: u64) -> TestWallet {
-        let keypair = Keypair::new();
+impl TestClaimer {
+    pub fn create(config: &Config, token_mint: &Pubkey, lamports: u64) -> TestClaimer {
+        let wallet = Keypair::new();
 
+        // Request airdrop
         let retry_count = 30;
         for i in 0..retry_count {
-            rpc_client.request_airdrop(&keypair.pubkey(), lamports).unwrap();
-            let balance = rpc_client.get_balance(&keypair.pubkey()).unwrap();
+            config.rpc_client.request_airdrop(&wallet.pubkey(), lamports).unwrap();
+            let balance = config.rpc_client.get_balance(&wallet.pubkey()).unwrap();
             if lamports == balance { break; }
             sleep(Duration::from_millis(500));
         }
 
-        let balance = rpc_client.get_balance(&keypair.pubkey()).unwrap();
-        assert_eq!(balance, lamports);
-        TestWallet { keypair }
-    }
-
-    pub fn create_token_account(&self, config: &Config, token_program: Pubkey, token_mint: Pubkey) -> Pubkey {
-        println!("create_spl_token_account(token_mint={})", token_mint);
-
-        // let token_account_id = Pubkey::new_unique();
-        let token_account_keypair = Keypair::new();
-        let minimum_balance_for_rent_exemption = config.rpc_client
-            .get_minimum_balance_for_rent_exemption(SplTokenAccount::LEN).unwrap();
-
-        let instructions = vec![
-            solana_sdk::system_instruction::create_account(
-                &self.keypair.pubkey(),
-                &token_account_keypair.pubkey(),
-                minimum_balance_for_rent_exemption,
-                SplTokenAccount::LEN as u64,
-                &token_program),
-            spl_token::instruction::initialize_account(
-                &token_program,
-                &token_account_keypair.pubkey(),
-                &token_mint,
-                &self.keypair.pubkey()).unwrap(),
-        ];
-
+        // Create token account
         let mut transaction = Transaction::new_with_payer(
-            &instructions,
-            Some(&self.keypair.pubkey()),
+            &vec![
+                spl_associated_token_account::create_associated_token_account(
+                    &wallet.pubkey(),
+                    &wallet.pubkey(),
+                    token_mint),
+            ],
+            Some(&wallet.pubkey()),
         );
-
-        let mut signers = vec![&self.keypair, &token_account_keypair];
+        let mut signers = vec![&wallet];
         let (recent_blockhash, _) = config.rpc_client.get_recent_blockhash().unwrap();
         config.check_fee_payer_balance(1).unwrap(); // TODO
         signers.sort_by_key(|e| e.pubkey());
         signers.dedup();
         transaction.sign(&signers, recent_blockhash);
         config.send_transaction(transaction).unwrap();
+        let token_account = spl_associated_token_account::get_associated_token_address(&wallet.pubkey(), &token_mint);
 
-        return token_account_keypair.pubkey()
+        TestClaimer { wallet, token_account }
     }
 }
 
@@ -107,51 +91,8 @@ pub fn new_account_with_lamports(rpc_client: &RpcClient, lamports: u64) -> Keypa
     result
 }
 
-pub fn create_spl_token(config: &Config,
-                        token_mint: &Keypair) -> Result<(), ProgramError> {
-    println!("create_spl_token(token_mint={})", token_mint.pubkey());
-
-    let minimum_balance_for_rent_exemption = config.rpc_client
-        .get_minimum_balance_for_rent_exemption(SplTokenMint::LEN).unwrap();
-    let freeze_authority_pubkey = None;
-
-    let instructions = vec![
-        solana_sdk::system_instruction::create_account(
-            &config.fee_payer.pubkey(),
-            &token_mint.pubkey(),
-            minimum_balance_for_rent_exemption,
-            SplTokenMint::LEN as u64,
-            &spl_token::id()),
-        spl_token::instruction::initialize_mint(
-            &spl_token::id(),
-            &token_mint.pubkey(),
-            &config.id_config.program,
-            freeze_authority_pubkey,
-            6).unwrap(),
-    ];
-
-    let mut transaction = Transaction::new_with_payer(
-        &instructions,
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let mut signers = vec![
-        config.fee_payer.as_ref(),
-        token_mint,
-    ];
-    let (recent_blockhash, _) = config.rpc_client.get_recent_blockhash().unwrap();
-    config.check_fee_payer_balance(1).unwrap(); // TODO
-    signers.sort_by_key(|e| e.pubkey());
-    signers.dedup();
-    transaction.sign(&signers, recent_blockhash);
-    config.send_transaction(transaction).unwrap();
-
-    Ok(())
-}
-
-pub fn debug_pool_account(tag: &str, config: &Config, token_mint: Pubkey) {
-    let (program_account_id, _) = program_config::get_pool_account(&config.id_config.program, &token_mint);
-    let program_account = client::get_airdrop_pool(&config.rpc_client, &program_account_id).unwrap();
+pub fn debug_pool_account(tag: &str, config: &Config, pubkey: &Pubkey) {
+    let program_account = client::get_airdrop_pool(&config.rpc_client, pubkey).unwrap();
     println!("{} : {:?}", tag, program_account);
 }
 
@@ -159,11 +100,6 @@ pub fn debug_token_account(tag: &str, config: &Config, pubkey: &Pubkey) {
     let account = config.rpc_client.get_account(pubkey).unwrap();
     let account = spl_token::state::Account::unpack(account.data()).unwrap();
     println!("{} : {:?}", tag, account);
-}
-
-pub fn get_pool_account(config: &Config, token_mint: Pubkey) -> AirdropPool {
-    let (program_account_id, _) = program_config::get_pool_account(&config.id_config.program, &token_mint);
-    client::get_airdrop_pool(&config.rpc_client, &program_account_id).unwrap()
 }
 
 pub fn get_token_account(config: &Config, pubkey: &Pubkey) -> SplTokenAccount {
