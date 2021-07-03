@@ -29,12 +29,12 @@ use client_rust::config::{Config, IdConfig};
 
 // TestUser
 
-pub struct TestAccount {
+pub struct TestWallet {
     pub keypair: Keypair,
 }
 
-impl TestAccount {
-    pub fn new(rpc_client: &RpcClient, lamports: u64) -> TestAccount {
+impl TestWallet {
+    pub fn new(rpc_client: &RpcClient, lamports: u64) -> TestWallet {
         let keypair = Keypair::new();
 
         let retry_count = 30;
@@ -47,7 +47,7 @@ impl TestAccount {
 
         let balance = rpc_client.get_balance(&keypair.pubkey()).unwrap();
         assert_eq!(balance, lamports);
-        TestAccount { keypair }
+        TestWallet { keypair }
     }
 
     pub fn create_token_account(&self, config: &Config, token_program: Pubkey, token_mint: Pubkey) -> Pubkey {

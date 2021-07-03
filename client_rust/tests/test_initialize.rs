@@ -98,10 +98,14 @@ async fn test_initialize() {
     assert_eq!(pool_token_account_data.close_authority, COption::None);
     assert_eq!(pool_token_account_data.delegate, COption::None);
 
-    let test_wallet = testutil::TestAccount::new(&config.rpc_client, 10_000_000);
-    let test_wallet_token_account = test_wallet.create_token_account(&config,
-                                                                     spl_token::id(),
-                                                                     token_mint.pubkey());
+    let test_wallet_keypair = testutil::TestWallet::new(&config.rpc_client, 10_000_000);
+    let test_wallet_token_account_id = test_wallet_keypair.create_token_account(&config,
+                                                                                spl_token::id(),
+                                                                                token_mint.pubkey());
 
-    command::claim(&config, token_mint.pubkey(), test_wallet_token_account, None);
+    testutil::debug_token_account("CLUCK wallet_before", &config, &test_wallet_token_account_id);
+
+    command::claim(&config, token_mint.pubkey(), test_wallet_token_account_id, None).unwrap();
+
+    testutil::debug_token_account("CLUCK wallet_after ", &config, &test_wallet_token_account_id);
 }

@@ -8,6 +8,7 @@ use {
 };
 
 use crate::config;
+use std::convert::TryInto;
 
 // ProgramState
 
@@ -17,8 +18,11 @@ pub struct AirdropPool {
     pub token_mint_id: Pubkey,
     pub account_id: Pubkey,
     pub token_account_id: Pubkey,
+    pub pool_account_nonce: [u8; 4],
+    pub reward_per_account: u64,
+    pub reward_per_referral: u64,
+    pub max_referral_depth: u32,
     pub is_initialized: bool,
-    pub account_nonce: u8,
 }
 
 impl Sealed for AirdropPool {}
@@ -30,15 +34,18 @@ impl IsInitialized for AirdropPool {
 }
 
 impl Pack for AirdropPool {
-    const LEN: usize = 130;
+    const LEN: usize = 153;
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
         dst[0..32].as_mut().write(&self.token_program_id.to_bytes()).unwrap();
         dst[32..64].as_mut().write(&self.token_mint_id.to_bytes()).unwrap();
         dst[64..96].as_mut().write(&self.account_id.to_bytes()).unwrap();
         dst[96..128].as_mut().write(&self.token_account_id.to_bytes()).unwrap();
-        dst[128] = self.is_initialized as u8;
-        dst[129] = self.account_nonce;
+        dst[128..132].as_mut().write(&self.pool_account_nonce).unwrap();
+        dst[132..140].as_mut().write(&self.reward_per_account.to_be_bytes()).unwrap();
+        dst[140..148].as_mut().write(&self.reward_per_referral.to_be_bytes()).unwrap();
+        dst[148..152].as_mut().write(&self.max_referral_depth.to_be_bytes()).unwrap();
+        dst[152] = self.is_initialized as u8;
     }
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
@@ -47,12 +54,15 @@ impl Pack for AirdropPool {
             token_mint_id: Pubkey::new(&src[32..64]),
             account_id: Pubkey::new(&src[64..96]),
             token_account_id: Pubkey::new(&src[96..128]),
-            is_initialized: match src[128] {
+            pool_account_nonce: src[128..132].try_into().unwrap(),
+            reward_per_account: u64::from_be_bytes(src[132..140].try_into().unwrap()),
+            reward_per_referral: u64::from_be_bytes(src[140..148].try_into().unwrap()),
+            max_referral_depth: u32::from_be_bytes(src[148..152].try_into().unwrap()),
+            is_initialized: match src[152] {
                 0 => false,
                 1 => true,
                 _ => return Err(ProgramError::InvalidAccountData),
             },
-            account_nonce: src[129],
         };
         Ok(result)
     }

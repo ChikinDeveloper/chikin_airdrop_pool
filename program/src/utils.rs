@@ -21,11 +21,15 @@ pub fn init_pool_account<'a>(
     token_mint: &AccountInfo<'a>,
     pool_account: &AccountInfo<'a>,
     pool_token_account: &AccountInfo<'a>,
+    pool_account_nonce: [u8; 4],
+    reward_per_account: u64,
+    reward_per_referral: u64,
+    max_referral_depth: u32,
 ) -> ProgramResult {
     let (
         account_id,
         account_bump_seed,
-    ) = config::get_pool_account(program.key, token_mint.key);
+    ) = config::get_pool_account(program.key, token_mint.key, &pool_account_nonce);
     let (
         _,
         pool_token_account_bump_seed,
@@ -53,7 +57,7 @@ pub fn init_pool_account<'a>(
             system_program.clone(),
         ],
         &[
-            pool_account_seeds!(program.key, token_mint.key, account_bump_seed),
+            pool_account_seeds!(program.key, token_mint.key, &pool_account_nonce, account_bump_seed),
             pool_token_account_seeds!(program.key, account_id, pool_token_account_bump_seed),
         ],
     )?;
@@ -65,7 +69,10 @@ pub fn init_pool_account<'a>(
         account_id: pool_account.key.clone(),
         token_account_id: pool_token_account.key.clone(),
         is_initialized: true,
-        account_nonce: config::get_pool_account(program.key, token_mint.key).1,
+        pool_account_nonce,
+        reward_per_account,
+        reward_per_referral,
+        max_referral_depth,
     };
 
     data.pack_into_slice(&mut &mut pool_account.data.borrow_mut()[..]);
@@ -82,11 +89,12 @@ pub fn init_pool_token_account<'a>(
     token_mint: &AccountInfo<'a>,
     pool_account: &AccountInfo<'a>,
     pool_token_account: &AccountInfo<'a>,
+    pool_account_nonce: [u8; 4],
 ) -> ProgramResult {
     let (
         account_id,
         account_bump_seed,
-    ) = config::get_pool_account(program.key, token_mint.key);
+    ) = config::get_pool_account(program.key, token_mint.key, &pool_account_nonce);
     let (
         _,
         pool_token_account_bump_seed,
@@ -111,7 +119,7 @@ pub fn init_pool_token_account<'a>(
             token_program.clone(),
         ],
         &[
-            pool_account_seeds!(program.key, token_mint.key, account_bump_seed),
+            pool_account_seeds!(program.key, token_mint.key, &pool_account_nonce, account_bump_seed),
             pool_token_account_seeds!(program.key, account_id, pool_token_account_bump_seed),
         ],
     )?;
@@ -132,7 +140,7 @@ pub fn init_pool_token_account<'a>(
             token_program.clone(),
         ],
         &[
-            pool_account_seeds!(program.key, token_mint.key, account_bump_seed),
+            pool_account_seeds!(program.key, token_mint.key, &pool_account_nonce, account_bump_seed),
             pool_token_account_seeds!(program.key, account_id, pool_token_account_bump_seed),
         ],
     )?;
@@ -158,11 +166,12 @@ pub fn transfer_to<'a>(
         &[pool_account.key],
         amount,
     )?;
+    let pool_account_bump_seed = config::get_pool_account(program.key, token_mint.key, &pool_account_state.pool_account_nonce).1;
     invoke_signed(
         &ix,
         &[pool_token_account.clone(), destination.clone(), pool_account.clone(), token_program.clone()],
         &[
-            pool_account_seeds!(program.key, token_mint.key, pool_account_state.account_nonce),
+            pool_account_seeds!(program.key, token_mint.key, &pool_account_state.pool_account_nonce, pool_account_bump_seed),
         ],
     )
     /*token_transfer(token_program.clone(),

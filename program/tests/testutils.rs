@@ -21,8 +21,13 @@ impl ProgramInfo {
     pub fn create(program_test: &mut ProgramTest,
                   program_id: &Pubkey,
                   token_program_id: Pubkey,
-                  token_mint_id: Pubkey) -> ProgramInfo {
-        let (account_id, account_nonce) = config::get_pool_account(&program_id, &token_mint_id);
+                  token_mint_id: Pubkey,
+                  pool_account_nonce: [u8; 4],
+                  reward_per_account: u64,
+                  reward_per_referral: u64,
+                  max_referral_depth: u32,
+    ) -> ProgramInfo {
+        let (account_id, _) = config::get_pool_account(&program_id, &token_mint_id, &pool_account_nonce);
         let token_account_id = config::get_pool_token_account(&program_id, &account_id).0;
 
         let account_state = AirdropPool {
@@ -30,13 +35,16 @@ impl ProgramInfo {
             token_mint_id,
             account_id,
             token_account_id,
+            pool_account_nonce,
+            reward_per_account,
+            reward_per_referral,
+            max_referral_depth,
             is_initialized: true,
-            account_nonce,
         };
 
         let token_account_state = SplTokenAccount {
             mint: token_mint_id,
-            amount: 10 * config::REWARD_PER_ACCOUNT,
+            amount: 10 * reward_per_account,
             state: spl_token::state::AccountState::Initialized,
             owner: account_id.clone(),
             ..SplTokenAccount::default()
@@ -76,6 +84,7 @@ impl ProgramInfo {
 
 #[derive(Clone)]
 pub struct UserInfo {
+    pub wallet: Pubkey,
     pub account: Pubkey,
     pub token_account: Pubkey,
 }
@@ -85,13 +94,14 @@ impl UserInfo {
                   program_id: Pubkey,
                   token_mint: Pubkey,
                   pool_id: Pubkey) -> UserInfo {
+        let wallet_id = Pubkey::new_unique();
         let token_account_id = {
-            let id = Pubkey::new_unique();
+            let id = config::get_user_token_account(&token_mint, &wallet_id);
             let data = SplTokenAccount {
                 mint: token_mint,
                 amount: 0,
                 state: spl_token::state::AccountState::Initialized,
-                owner: Pubkey::new_unique(), // ?
+                owner: wallet_id,
                 ..SplTokenAccount::default()
             };
             assert!(data.delegate.is_none());
@@ -110,7 +120,7 @@ impl UserInfo {
         };
 
         let account_id = {
-            let id = config::get_claimer_account(&program_id, &pool_id, &token_account_id).0;
+            let id = config::get_user_account(&program_id, &pool_id, &wallet_id).0;
             let data = AirdropClaimer::default();
             let mut data_packed = vec![0; AirdropClaimer::LEN];
             data.pack_into_slice(&mut data_packed);
@@ -126,7 +136,7 @@ impl UserInfo {
             id
         };
 
-        UserInfo { account: account_id, token_account: token_account_id }
+        UserInfo { wallet: wallet_id, account: account_id, token_account: token_account_id }
     }
 
     pub async fn debug(&self, tag: &str, banks_client: &mut BanksClient) {
