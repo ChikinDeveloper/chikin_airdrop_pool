@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:solana/src/utils.dart' as solana_utils;
 import 'package:solana/solana.dart' as solana;
 
+import 'config.dart';
+
 Future<String> getPoolAccountId({
   required String programId,
   required String tokenMintId,
@@ -50,14 +52,36 @@ Future<String> getClaimerAccountId({
   );
 }
 
+/*
+pub(crate) fn get_associated_token_address_and_bump_seed(
+    wallet_address: &Pubkey,
+    spl_token_mint_address: &Pubkey,
+    program_id: &Pubkey,
+) -> (Pubkey, u8) {
+    Pubkey::find_program_address(
+        &[
+            &wallet_address.to_bytes(),
+            &spl_token::id().to_bytes(),
+            &spl_token_mint_address.to_bytes(),
+        ],
+        program_id,
+    )
+}
+ */
+
 Future<String> getClaimerTokenAccountId({
-  required solana.RPCClient rpcClient,
+  required Config config,
   required String tokenMintId,
   required String claimerWalletId,
 }) async {
-  final splToken = await solana.SplToken
-      .readonly(mint: tokenMintId, rpcClient: rpcClient);
-  return splToken.findAssociatedTokenAddress(claimerWalletId);
+  return solana_utils.findProgramAddress(
+    seeds: [
+      solana.base58decode(claimerWalletId),
+      solana.base58decode(config.tokenProgramId),
+      solana.base58decode(tokenMintId),
+    ],
+    programId: config.associatedTokenProgramId,
+  );
 }
 
 int unpackUInt(List<int> data, {Endian endian = Endian.big}) {

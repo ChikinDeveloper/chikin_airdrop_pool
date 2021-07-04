@@ -43,7 +43,7 @@ class Command {
   }) async {
     final poolTokenAccountId = await utils.getPoolTokenAccountId(programId: config.programId, poolAccountId: poolAccountId);
     final claimerAccountId = await utils.getClaimerAccountId(programId: config.programId, poolAccountId: poolAccountId, claimerWalletId: claimerWalletId);
-    final claimerTokenAccountId = await utils.getClaimerTokenAccountId(rpcClient: rpcClient, tokenMintId: tokenMintId, claimerWalletId: claimerWalletId);
+    final claimerTokenAccountId = await utils.getClaimerTokenAccountId(config: config, tokenMintId: tokenMintId, claimerWalletId: claimerWalletId);
     
     return Instruction(
       programId: config.programId,
@@ -53,11 +53,11 @@ class Command {
         AccountMeta.readonly(pubKey: config.systemProgramId, isSigner: false),
         AccountMeta.readonly(pubKey: config.tokenProgramId, isSigner: false),
         AccountMeta.readonly(pubKey: tokenMintId, isSigner: false),
-        AccountMeta.readonly(pubKey: poolAccountId, isSigner: false),
-        AccountMeta.readonly(pubKey: poolTokenAccountId, isSigner: false),
-        AccountMeta.readonly(pubKey: claimerWalletId, isSigner: false),
-        AccountMeta.readonly(pubKey: claimerAccountId, isSigner: false),
-        AccountMeta.readonly(pubKey: claimerTokenAccountId, isSigner: false),
+        AccountMeta.writeable(pubKey: poolAccountId, isSigner: false),
+        AccountMeta.writeable(pubKey: poolTokenAccountId, isSigner: false),
+        AccountMeta.writeable(pubKey: claimerWalletId, isSigner: true),
+        AccountMeta.writeable(pubKey: claimerAccountId, isSigner: false),
+        AccountMeta.writeable(pubKey: claimerTokenAccountId, isSigner: false),
       ],
       data: AirdropPoolInstructionClaim(
         referrerWallet: null,

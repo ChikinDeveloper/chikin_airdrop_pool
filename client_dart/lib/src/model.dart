@@ -59,6 +59,8 @@ class AirdropClaimer {
 }
 
 abstract class AirdropPoolInstruction {
+  static const packedSize = 34;
+
   AirdropPoolInstruction._();
 
   List<int> pack();
@@ -79,13 +81,16 @@ class AirdropPoolInstructionInitialize extends AirdropPoolInstruction {
 
   @override
   List<int> pack() {
-    return [
+    final result = [
       0,
       ...poolAccountNonce,
       ...utils.packUInt64(rewardPerAccount),
       ...utils.packUInt64(rewardPerReferral),
       ...utils.packUInt32(maxReferralDepth),
     ];
+    assert(result.length <= AirdropPoolInstruction.packedSize);
+    result.addAll(List.filled(AirdropPoolInstruction.packedSize - result.length, 0));
+    return result;
   }
 }
 
@@ -96,6 +101,9 @@ class AirdropPoolInstructionClaim extends AirdropPoolInstruction {
 
   @override
   List<int> pack() {
-    return [1, ...(referrerWallet ?? List.generate(32, (e) => 0))];
+    final result = [1, ...(referrerWallet ?? List.generate(32, (e) => 0))];
+    assert(result.length <= AirdropPoolInstruction.packedSize);
+    result.addAll(List.filled(AirdropPoolInstruction.packedSize - result.length, 0));
+    return result;
   }
 }

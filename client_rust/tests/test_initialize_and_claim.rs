@@ -33,7 +33,7 @@ mod testutil;
 //
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-async fn test_initialize() {
+async fn test_initialize_and_claim() {
     let config = {
         let rpc_url = "http://localhost:8899";
         let rpc_client = RpcClient::new_with_commitment(rpc_url.to_string(),
@@ -54,15 +54,14 @@ async fn test_initialize() {
 
     println!("test_initialize: fee_payer_balance1={}", config.get_fee_payer_balance());
     println!("test_initialize: create test token");
-    let test_token_decimals: u32 = 6;
-    let test_token = testutil::test_token::TestToken::create(&config, test_token_decimals as u8);
+    let test_token = testutil::test_token::TestToken::create(&config);
     println!("test_initialize: test_token.mint_authority={}", test_token.mint_authority.pubkey());
     println!("test_initialize: test_token.mint={}", test_token.mint.pubkey());
     println!("test_initialize: fee_payer_balance2={}", config.get_fee_payer_balance());
 
     let pool_account_nonce = [1, 0, 1, 0];
-    let reward_per_account: u64 = 500 * 10_u32.pow(test_token_decimals) as u64;
-    let reward_per_referral: u64 = 100 * 10_u32.pow(test_token_decimals) as u64;
+    let reward_per_account = 500;
+    let reward_per_referral = 100;
     let max_referral_depth = 2;
     let (
         pool_account_id,
@@ -111,5 +110,20 @@ async fn test_initialize() {
     // Mint some token to pool token account
     println!("test_initialize: fee_payer_balance4={}", config.get_fee_payer_balance());
     println!("test_initialize: mint some token to pool token account");
-    test_token.mint(&config, 10_000 * 10_u32.pow(test_token_decimals) as u64, &pool_token_account_id);
+    test_token.mint(&config, 10000, &pool_token_account_id);
+
+    //
+    println!("test_initialize: fee_payer_balance5={}", config.get_fee_payer_balance());
+    let test_claimer_1 = testutil::TestClaimer::create(&config, &test_token.mint.pubkey(), 10_000_000);
+    println!("test_initialize: test_claimer_1.wallet={}", test_claimer_1.wallet.pubkey());
+    println!("test_initialize: test_claimer_1.token_account={}", test_claimer_1.token_account);
+
+    testutil::debug_token_account("CLUCK claimer_token_account before", &config, &test_claimer_1.token_account);
+    testutil::debug_token_account("CLUCK pool_token_account before", &config, &pool_token_account_id);
+
+    command::claim(&config, test_token.mint.pubkey(), pool_account_id, &test_claimer_1.wallet, None).unwrap();
+
+    testutil::debug_token_account("CLUCK claimer_token_account after ", &config, &test_claimer_1.token_account);
+    testutil::debug_token_account("CLUCK pool_token_account after", &config, &pool_token_account_id);
+    println!("test_initialize: fee_payer_balance6={}", config.get_fee_payer_balance());
 }

@@ -14,7 +14,7 @@ pub struct TestToken {
 }
 
 impl TestToken {
-    pub fn create(config: &Config) -> Self {
+    pub fn create(config: &Config, decimals: u8) -> Self {
         let token_mint_authority = Keypair::new();
         let token_mint = Keypair::new();
 
@@ -34,7 +34,7 @@ impl TestToken {
                 &token_mint.pubkey(),
                 &token_mint_authority.pubkey(),
                 freeze_authority_pubkey,
-                6).unwrap(),
+                decimals).unwrap(),
         ];
 
         let mut transaction = Transaction::new_with_payer(
