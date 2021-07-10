@@ -52,23 +52,6 @@ Future<String> getClaimerAccountId({
   );
 }
 
-/*
-pub(crate) fn get_associated_token_address_and_bump_seed(
-    wallet_address: &Pubkey,
-    spl_token_mint_address: &Pubkey,
-    program_id: &Pubkey,
-) -> (Pubkey, u8) {
-    Pubkey::find_program_address(
-        &[
-            &wallet_address.to_bytes(),
-            &spl_token::id().to_bytes(),
-            &spl_token_mint_address.to_bytes(),
-        ],
-        program_id,
-    )
-}
- */
-
 Future<String> getClaimerTokenAccountId({
   required Config config,
   required String tokenMintId,

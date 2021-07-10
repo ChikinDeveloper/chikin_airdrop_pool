@@ -6,6 +6,7 @@ use crate::client;
 
 use crate::config::Config;
 use crate::error::AirdropPoolClientError;
+use chikin_airdrop_pool::config as program_config;
 
 type Error = Box<dyn std::error::Error>;
 type CommandResult = Result<(), Error>;
@@ -16,7 +17,7 @@ pub fn initialize(
     pool_account_nonce: [u8; 4],
     reward_per_account: u64,
     reward_per_referral: u64,
-    max_referral_depth: u32,
+    max_referral_depth: u8,
 ) -> CommandResult {
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -64,7 +65,8 @@ pub fn claim(config: &Config, token_mint: Pubkey, pool_account: Pubkey, claimer_
         if tmp_referrer_depth > pool_account_state.max_referral_depth {
             break;
         }
-        let referrer_account_state = client::get_airdrop_user(&config.rpc_client, &tmp_referrer_wallet)?;
+        let referrer_account = program_config::get_claimer_account(&config.id_config.program, &pool_account, &tmp_referrer_wallet).0;
+        let referrer_account_state = client::get_airdrop_user(&config.rpc_client, &referrer_account)?;
         if referrer_account_state.claimed == 0 {
             return Err(AirdropPoolClientError::ReferrerDidNotClaim.into());
         }

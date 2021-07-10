@@ -24,7 +24,7 @@ impl ProgramInfo {
                   pool_account_nonce: [u8; 4],
                   reward_per_account: u64,
                   reward_per_referral: u64,
-                  max_referral_depth: u32,
+                  max_referral_depth: u8,
     ) -> ProgramInfo {
         let (account_id, _) = config::get_pool_account(&program_id, &token_mint_id, &pool_account_nonce);
         let token_account_id = config::get_pool_token_account(&program_id, &account_id).0;
@@ -32,13 +32,10 @@ impl ProgramInfo {
         let account_state = AirdropPool {
             token_program_id,
             token_mint_id,
-            account_id,
-            token_account_id,
-            pool_account_nonce,
+            account_nonce: pool_account_nonce,
             reward_per_account,
             reward_per_referral,
             max_referral_depth,
-            is_initialized: 1,
         };
 
         let token_account_state = SplTokenAccount {
@@ -157,7 +154,7 @@ impl UserInfo {
             .expect("user.account")
             .expect("user.account not found");
 
-        let account_state: AirdropClaimer = AirdropClaimer::unpack(&account.data);
+        let account_state: AirdropClaimer = AirdropClaimer::unpack(&account.data).unwrap();
         let token_account_state = SplTokenAccount::unpack(&token_account.data).unwrap();
 
         println!("debug_user({}) : account.key={}, account.owner={}", tag, self.account, account.owner);

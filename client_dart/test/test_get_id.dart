@@ -4,7 +4,7 @@ import 'package:test/scaffolding.dart';
 
 void main() {
   final config = Config.defaultValue;
-  final programId = '3K1Td3DmxWt2rxT1H4furqWJyZu3nuc7QQs6W5rtHY3P';
+  final programId = 'ALaYfBMScNrJxKTfgpfFYDQSMYJHpzuxGq15TM2j6o8E';
   final tokenMintId = '8s9FCz99Wcr3dHpiauFRi6bLXzshXfcGTfgQE7UEopVx';
   final poolAccountNonce = [1, 0, 1, 0];
   final claimerWalletId = 'DkmfiWSC4mnPvfMXZY2CkT4skvFkGr4u5DwRX2htRvJ2';

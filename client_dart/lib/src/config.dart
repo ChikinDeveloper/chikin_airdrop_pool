@@ -14,7 +14,7 @@ class Config {
   final String associatedTokenProgramId;
 
   static const defaultValue = Config(
-    programId: '3K1Td3DmxWt2rxT1H4furqWJyZu3nuc7QQs6W5rtHY3P',
+    programId: 'ALaYfBMScNrJxKTfgpfFYDQSMYJHpzuxGq15TM2j6o8E',
     rentSysvarId: 'SysvarRent111111111111111111111111111111111',
     systemProgramId: '11111111111111111111111111111111',
     tokenProgramId: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',

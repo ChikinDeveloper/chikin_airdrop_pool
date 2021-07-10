@@ -24,6 +24,7 @@ use testutils::UserInfo;
 use solana_sdk::account::Account;
 use chikin_airdrop_pool::state::AirdropPool;
 use std::str::FromStr;
+use chikin_airdrop_pool::packable::Packable;
 
 #[tokio::test]
 async fn test_initialize() {
@@ -31,7 +32,7 @@ async fn test_initialize() {
     let rent_sysvar_id = solana_program::sysvar::rent::id();
     let system_program_id = solana_program::system_program::id();
     let token_program_id = spl_token::id();
-    let token_mint_id = Pubkey::from_str("3K1Td3DmxWt2rxT1H4furqWJyZu3nuc7QQs6W5rtHY3P").unwrap();
+    let token_mint_id = Pubkey::from_str("ALaYfBMScNrJxKTfgpfFYDQSMYJHpzuxGq15TM2j6o8E").unwrap();
     let (program_account_id, _) = config::get_pool_account(&program_id, &token_mint_id, &[1, 0, 1, 0]);
     let program_token_account_id = Pubkey::new_unique();
 
@@ -79,7 +80,7 @@ async fn send_initialize(banks_client: &mut BanksClient,
                          program_token_account_id: Pubkey) {
     let instruction = AirdropPoolInstruction::Initialize;
     let mut instruction_data = [0; chikin_airdrop_pool::instruction::AirdropPoolInstruction::SIZE];
-    instruction.pack_into(&mut instruction_data);
+    instruction.pack_into(&mut instruction_data).unwrap();
 
     let accounts = vec![
         AccountMeta::new(payer.pubkey(), false),

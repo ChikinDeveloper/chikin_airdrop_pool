@@ -2,8 +2,13 @@ use solana_program;
 use solana_program::account_info::AccountInfo;
 use solana_program::account_info::next_account_info;
 use solana_program::entrypoint::ProgramResult;
+use solana_program::program::invoke_signed;
 use solana_program::program_pack::Pack;
 use solana_program::pubkey::Pubkey;
+use solana_program::rent::Rent;
+use solana_program::system_instruction;
+use solana_program::sysvar::Sysvar;
+use spl_token;
 use spl_token::state::Account as SplTokenAccount;
 
 use crate::config;
@@ -11,9 +16,6 @@ use crate::error::AirdropPoolError;
 use crate::instruction::AirdropPoolInstruction;
 use crate::packable::Packable;
 use crate::state::{AirdropClaimer, AirdropPool};
-use crate::utils;
-use solana_program::rent::Rent;
-use solana_program::sysvar::Sysvar;
 
 pub fn process_instruction(
     program_id: &Pubkey,
@@ -48,7 +50,7 @@ pub fn process_initialize(
     pool_account_nonce: [u8; 4],
     reward_per_account: u64,
     reward_per_referral: u64,
-    max_referral_depth: u32,
+    max_referral_depth: u8,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
 
@@ -87,6 +89,9 @@ pub fn process_initialize(
     if rent_sysvar.key != &solana_program::sysvar::rent::id() {
         return Err(AirdropPoolError::RentSysvarKeyMismatch.into());
     }
+    if system_program.key != &solana_program::system_program::id() {
+        return Err(AirdropPoolError::SystemProgramKeyMismatch.into());
+    }
     if pool_account.key != &pool_account_id {
         return Err(AirdropPoolError::PoolAccountKeyMismatch.into());
     }
@@ -96,35 +101,33 @@ pub fn process_initialize(
 
     // Initialize program account
 
-    utils::init_pool_account(funder,
-                             program,
-                             system_program,
-                             token_program,
-                             token_mint,
-                             pool_account,
-                             pool_token_account,
-                             &rent,
-                             pool_account_nonce,
-                             reward_per_account,
-                             reward_per_referral,
-                             max_referral_depth,
-                             pool_account_bump_seed,
-                             pool_token_account_bump_seed)?;
+    init_pool_account(funder,
+                      program,
+                      system_program,
+                      token_program,
+                      token_mint,
+                      pool_account,
+                      &rent,
+                      pool_account_nonce,
+                      reward_per_account,
+                      reward_per_referral,
+                      max_referral_depth,
+                      pool_account_bump_seed)
+        .map_err(|_| AirdropPoolError::InitPoolAccountFailed)?;
 
     // Initialize program token account
 
-    utils::init_pool_token_account(funder,
-                                   program,
-                                   rent_sysvar,
-                                   system_program,
-                                   token_program,
-                                   token_mint,
-                                   pool_account,
-                                   pool_token_account,
-                                   &rent,
-                                   pool_account_nonce,
-                                   pool_account_bump_seed,
-                                   pool_token_account_bump_seed)?;
+    init_pool_token_account(funder,
+                            program,
+                            rent_sysvar,
+                            system_program,
+                            token_program,
+                            token_mint,
+                            pool_account,
+                            pool_token_account,
+                            &rent,
+                            pool_token_account_bump_seed)
+        .map_err(|_| AirdropPoolError::InitPoolTokenAccountFailed)?;
 
     Ok(())
 }
@@ -171,7 +174,7 @@ pub fn process_claim(
 
     //
 
-    let (pool_account_id, pool_account_bump_seed) = config::get_pool_account(program.key, token_mint.key, &pool_account_state.pool_account_nonce);
+    let (pool_account_id, pool_account_bump_seed) = config::get_pool_account(program.key, token_mint.key, &pool_account_state.account_nonce);
     let (pool_token_account_id, _) = config::get_pool_token_account(program.key, pool_account.key);
     let (claimer_account_id, claimer_account_bump_seed) = config::get_claimer_account(program.key, pool_account.key, claimer_wallet.key);
 
@@ -238,15 +241,15 @@ pub fn process_claim(
                 return Err(AirdropPoolError::ReferrerDidNotClaim.into());
             }
 
-            utils::transfer_to(program.clone(),
-                               token_program.clone(),
-                               token_mint.clone(),
-                               pool_account.clone(),
-                               pool_token_account.clone(),
-                               referrer_token_account.clone(),
-                               &pool_account_state,
-                               pool_account_state.reward_per_referral,
-                               pool_account_bump_seed)
+            transfer_to(program.clone(),
+                        token_program.clone(),
+                        token_mint.clone(),
+                        pool_account.clone(),
+                        pool_token_account.clone(),
+                        referrer_token_account.clone(),
+                        &pool_account_state,
+                        pool_account_state.reward_per_referral,
+                        pool_account_bump_seed)
                 .map_err(|_| AirdropPoolError::TransferToReferrerFailed)?;
 
 
@@ -256,14 +259,15 @@ pub fn process_claim(
     }
 
     // println!("Init claimer");
-    utils::init_claimer_account(claimer_wallet,
-                                program,
-                                system_program,
-                                pool_account,
-                                claimer_wallet,
-                                claimer_account,
-                                &rent,
-                                claimer_account_bump_seed)?;
+    init_claimer_account(claimer_wallet,
+                         program,
+                         system_program,
+                         pool_account,
+                         claimer_wallet,
+                         claimer_account,
+                         &rent,
+                         claimer_account_bump_seed)
+        .map_err(|_| AirdropPoolError::InitClaimerAccountFailed)?;
 
     // println!("Update claimer account");
     let mut claimer_account_state: AirdropClaimer = AirdropClaimer::unpack(*claimer_account.data.borrow())?;
@@ -272,17 +276,191 @@ pub fn process_claim(
     claimer_account_state.pack_into(&mut &mut claimer_account.data.borrow_mut()[..])?;
 
     // println!("Reward claimer");
-    utils::transfer_to(program.clone(),
-                       token_program.clone(),
-                       token_mint.clone(),
-                       pool_account.clone(),
-                       pool_token_account.clone(),
-                       claimer_token_account.clone(),
-                       &pool_account_state,
-                       pool_account_state.reward_per_account,
-                       pool_account_bump_seed)
+    let mut claimer_reward = pool_account_state.reward_per_account;
+    if referrer.is_some() {
+        claimer_reward += pool_account_state.reward_per_referral;
+    }
+    transfer_to(program.clone(),
+                token_program.clone(),
+                token_mint.clone(),
+                pool_account.clone(),
+                pool_token_account.clone(),
+                claimer_token_account.clone(),
+                &pool_account_state,
+                claimer_reward,
+                pool_account_bump_seed)
         .map_err(|_| AirdropPoolError::TransferToUserFailed)?;
 
     Ok(())
 }
 
+// Utils
+
+pub fn init_pool_account<'a>(
+    funder: &AccountInfo<'a>,
+    program: &AccountInfo<'a>,
+    system_program: &AccountInfo<'a>,
+    token_program: &AccountInfo<'a>,
+    token_mint: &AccountInfo<'a>,
+    pool_account: &AccountInfo<'a>,
+    rent: &Rent,
+    pool_account_nonce: [u8; 4],
+    reward_per_account: u64,
+    reward_per_referral: u64,
+    max_referral_depth: u8,
+    pool_account_bump_seed: u8,
+) -> ProgramResult {
+    // Create account
+    invoke_signed(
+        &system_instruction::create_account(
+            funder.key,
+            pool_account.key,
+            rent.minimum_balance(AirdropPool::PACKED_SIZE).max(1),
+            AirdropPool::PACKED_SIZE as u64,
+            program.key,
+        ),
+        &[
+            funder.clone(),
+            pool_account.clone(),
+            system_program.clone(),
+        ],
+        &[
+            pool_account_seeds!(program.key, token_mint.key, &pool_account_nonce, pool_account_bump_seed),
+        ],
+    )?;
+
+    // Initialize account
+    AirdropPool {
+        token_program_id: token_program.key.clone(),
+        token_mint_id: token_mint.key.clone(),
+        account_nonce: pool_account_nonce,
+        reward_per_account,
+        reward_per_referral,
+        max_referral_depth,
+    }.pack_into(&mut &mut pool_account.data.borrow_mut()[..])?;
+
+    Ok(())
+}
+
+pub fn init_pool_token_account<'a>(
+    funder: &AccountInfo<'a>,
+    program: &AccountInfo<'a>,
+    rent_sysvar: &AccountInfo<'a>,
+    system_program: &AccountInfo<'a>,
+    token_program: &AccountInfo<'a>,
+    token_mint: &AccountInfo<'a>,
+    pool_account: &AccountInfo<'a>,
+    pool_token_account: &AccountInfo<'a>,
+    rent: &Rent,
+    pool_token_account_bump_seed: u8,
+) -> ProgramResult {
+    // Create account
+    invoke_signed(
+        &system_instruction::create_account(
+            funder.key,
+            pool_token_account.key,
+            rent.minimum_balance(spl_token::state::Account::LEN).max(1),
+            spl_token::state::Account::LEN as u64,
+            token_program.key,
+        ),
+        &[
+            funder.clone(),
+            rent_sysvar.clone(),
+            pool_token_account.clone(),
+            system_program.clone(),
+            token_program.clone(),
+        ],
+        &[
+            pool_token_account_seeds!(program.key, pool_account.key, pool_token_account_bump_seed),
+        ],
+    )?;
+
+    // Initialize account
+    invoke_signed(
+        &spl_token::instruction::initialize_account(
+            token_program.key,
+            pool_token_account.key,
+            token_mint.key,
+            pool_account.key,
+        )?,
+        &[
+            rent_sysvar.clone(),
+            pool_token_account.clone(),
+            pool_account.clone(),
+            token_mint.clone(),
+            token_program.clone(),
+        ],
+        &[
+            // pool_account_seeds!(program.key, token_mint.key, &pool_account_nonce, pool_account_bump_seed),
+            // pool_token_account_seeds!(program.key, pool_account.key, pool_token_account_bump_seed),
+        ],
+    )?;
+
+    Ok(())
+}
+
+pub fn init_claimer_account<'a>(
+    funder: &AccountInfo<'a>,
+    program: &AccountInfo<'a>,
+    system_program: &AccountInfo<'a>,
+    pool_account: &AccountInfo<'a>,
+    claimer_wallet: &AccountInfo<'a>,
+    claimer_account: &AccountInfo<'a>,
+    rent: &Rent,
+    claimer_account_bump_seed: u8,
+) -> ProgramResult {
+    // Create account
+    invoke_signed(
+        &system_instruction::create_account(
+            funder.key,
+            claimer_account.key,
+            rent.minimum_balance(AirdropClaimer::PACKED_SIZE).max(1),
+            AirdropClaimer::PACKED_SIZE as u64,
+            program.key,
+        ),
+        &[
+            funder.clone(),
+            claimer_account.clone(),
+            system_program.clone(),
+        ],
+        &[
+            claimer_account_seeds!(program.key, pool_account.key, claimer_wallet.key, claimer_account_bump_seed),
+        ],
+    )?;
+
+    // Initialize account
+    AirdropClaimer {
+        referrer_wallet: None,
+        claimed: 0,
+    }.pack_into(&mut &mut claimer_account.data.borrow_mut()[..])?;
+
+    Ok(())
+}
+
+pub fn transfer_to<'a>(
+    program: AccountInfo<'a>,
+    token_program: AccountInfo<'a>,
+    token_mint: AccountInfo<'a>,
+    pool_account: AccountInfo<'a>,
+    pool_token_account: AccountInfo<'a>,
+    destination: AccountInfo<'a>,
+    pool_account_state: &AirdropPool,
+    amount: u64,
+    pool_account_bump_seed: u8,
+) -> ProgramResult {
+    let ix = spl_token::instruction::transfer(
+        token_program.key,
+        pool_token_account.key,
+        destination.key,
+        pool_account.key,
+        &[pool_account.key],
+        amount,
+    )?;
+    invoke_signed(
+        &ix,
+        &[pool_token_account.clone(), destination.clone(), pool_account.clone(), token_program.clone()],
+        &[
+            pool_account_seeds!(program.key, token_mint.key, &pool_account_state.account_nonce, pool_account_bump_seed),
+        ],
+    )
+}

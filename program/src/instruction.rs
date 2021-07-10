@@ -21,7 +21,7 @@ pub enum AirdropPoolInstruction {
         #[allow(dead_code)]
         reward_per_referral: u64,
         #[allow(dead_code)]
-        max_referral_depth: u32,
+        max_referral_depth: u8,
     },
     Claim {
         #[allow(dead_code)]
@@ -40,7 +40,7 @@ impl AirdropPoolInstruction {
         pool_account_nonce: [u8; 4],
         reward_per_account: u64,
         reward_per_referral: u64,
-        max_referral_depth: u32,
+        max_referral_depth: u8,
     ) -> Instruction {
         let (pool_account, _) = config::get_pool_account(&program, &token_mint, &pool_account_nonce);
         let (pool_token_account, _) = config::get_pool_token_account(&program, &pool_account);

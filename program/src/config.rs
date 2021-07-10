@@ -2,11 +2,6 @@ use solana_program::pubkey::Pubkey;
 use spl_associated_token_account;
 
 #[inline(always)]
-pub fn is_valid_pubkey(pubkey: &Pubkey) -> bool {
-    pubkey.ne(&Pubkey::default())
-}
-
-#[inline(always)]
 pub fn get_pool_account(program: &Pubkey, token_mint: &Pubkey, nonce: &[u8]) -> (Pubkey, u8) {
     Pubkey::find_program_address(&[
         &program.to_bytes(),
@@ -50,6 +45,7 @@ macro_rules! pool_token_account_seeds {
     };
 }
 
+#[inline(always)]
 pub fn get_claimer_account(program: &Pubkey,
                            pool_account: &Pubkey,
                            claimer_wallet: &Pubkey) -> (Pubkey, u8) {
@@ -74,6 +70,7 @@ macro_rules! claimer_account_seeds {
     };
 }
 
+#[inline(always)]
 pub fn get_claimer_token_account(token_mint: &Pubkey, user_wallet: &Pubkey) -> Pubkey {
     return spl_associated_token_account::get_associated_token_address(user_wallet, token_mint);
 }

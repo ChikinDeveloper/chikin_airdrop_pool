@@ -33,7 +33,7 @@ mod testutil;
 //
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-async fn test_initialize() {
+async fn test_initialize_and_claim_twice() {
     let config = {
         let rpc_url = "http://localhost:8899";
         let rpc_client = RpcClient::new_with_commitment(rpc_url.to_string(),
@@ -52,17 +52,16 @@ async fn test_initialize() {
         }
     };
 
-    println!("test_initialize: fee_payer_balance1={}", config.get_fee_payer_balance());
-    println!("test_initialize: create test token");
-    let test_token_decimals: u32 = 6;
-    let test_token = testutil::test_token::TestToken::create(&config, test_token_decimals as u8);
-    println!("test_initialize: test_token.mint_authority={}", test_token.mint_authority.pubkey());
-    println!("test_initialize: test_token.mint={}", test_token.mint.pubkey());
-    println!("test_initialize: fee_payer_balance2={}", config.get_fee_payer_balance());
+    println!("test_initialize_claim_twice fee_payer_balance1={}", config.get_fee_payer_balance());
+    println!("test_initialize_claim_twice create test token");
+    let test_token = testutil::test_token::TestToken::create(&config, 6);
+    println!("test_initialize_claim_twice test_token.mint_authority={}", test_token.mint_authority.pubkey());
+    println!("test_initialize_claim_twice test_token.mint={}", test_token.mint.pubkey());
+    println!("test_initialize_claim_twice fee_payer_balance2={}", config.get_fee_payer_balance());
 
     let pool_account_nonce = [1, 0, 1, 0];
-    let reward_per_account: u64 = 500 * 10_u32.pow(test_token_decimals) as u64;
-    let reward_per_referral: u64 = 100 * 10_u32.pow(test_token_decimals) as u64;
+    let reward_per_account = 500;
+    let reward_per_referral = 100;
     let max_referral_depth = 2;
     let (
         pool_account_id,
@@ -73,14 +72,14 @@ async fn test_initialize() {
         pool_token_account_nonce,
     ) = program_config::get_pool_token_account(&config.id_config.program, &pool_account_id);
 
-    println!("test_initialize: id_config={:?}", config.id_config);
-    println!("test_initialize: token_mint_id={}", test_token.mint.pubkey());
-    println!("test_initialize: airdrop_pool_id={}", pool_account_id);
-    println!("test_initialize: pool_token_account_id={}", pool_token_account_id);
+    println!("test_initialize_claim_twice id_config={:?}", config.id_config);
+    println!("test_initialize_claim_twice token_mint_id={}", test_token.mint.pubkey());
+    println!("test_initialize_claim_twice airdrop_pool_id={}", pool_account_id);
+    println!("test_initialize_claim_twice pool_token_account_id={}", pool_token_account_id);
 
     // Initialize pool
-    println!("test_initialize: fee_payer_balance3={}", config.get_fee_payer_balance());
-    println!("test_initialize: create_pool");
+    println!("test_initialize_claim_twice fee_payer_balance3={}", config.get_fee_payer_balance());
+    println!("test_initialize_claim_twice create_pool");
     command::initialize(&config,
                         test_token.mint.pubkey(),
                         pool_account_nonce,
@@ -93,10 +92,7 @@ async fn test_initialize() {
     assert_ne!(airdrop_pool.lamports, 0);
     assert_eq!(airdrop_pool.owner, config.id_config.program);
     let airdrop_pool_data = AirdropPool::unpack(airdrop_pool.data()).unwrap();
-    assert_eq!(airdrop_pool_data.is_initialized, 1);
-    assert_eq!(airdrop_pool_data.token_account_id, pool_token_account_id);
-    assert_eq!(airdrop_pool_data.account_id, pool_account_id);
-    assert_eq!(airdrop_pool_data.pool_account_nonce, pool_account_nonce);
+    assert_eq!(airdrop_pool_data.account_nonce, pool_account_nonce);
 
     let pool_token_account = config.rpc_client.get_account(&pool_token_account_id).unwrap();
     assert_ne!(pool_token_account.lamports, 0);
@@ -109,7 +105,24 @@ async fn test_initialize() {
     assert_eq!(pool_token_account_data.delegate, COption::None);
 
     // Mint some token to pool token account
-    println!("test_initialize: fee_payer_balance4={}", config.get_fee_payer_balance());
-    println!("test_initialize: mint some token to pool token account");
-    test_token.mint(&config, 10_000 * 10_u32.pow(test_token_decimals) as u64, &pool_token_account_id);
+    println!("test_initialize_claim_twice fee_payer_balance4={}", config.get_fee_payer_balance());
+    println!("test_initialize_claim_twice mint some token to pool token account");
+    test_token.mint(&config, 10000, &pool_token_account_id);
+
+    //
+    println!("test_initialize_claim_twice fee_payer_balance5={}", config.get_fee_payer_balance());
+    let test_claimer_1 = testutil::TestClaimer::create(&config, &test_token.mint.pubkey(), 10_000_000);
+    println!("test_initialize_claim_twice test_claimer_1.wallet={}", test_claimer_1.wallet.pubkey());
+    println!("test_initialize_claim_twice test_claimer_1.token_account={}", test_claimer_1.token_account);
+
+    testutil::debug_token_account("CLUCK claimer_token_account before", &config, &test_claimer_1.token_account);
+    testutil::debug_token_account("CLUCK pool_token_account before", &config, &pool_token_account_id);
+
+    command::claim(&config, test_token.mint.pubkey(), pool_account_id, &test_claimer_1.wallet, None).unwrap();
+
+    testutil::debug_token_account("CLUCK claimer_token_account after ", &config, &test_claimer_1.token_account);
+    testutil::debug_token_account("CLUCK pool_token_account after", &config, &pool_token_account_id);
+    println!("test_initialize_claim_twice fee_payer_balance6={}", config.get_fee_payer_balance());
+
+    command::claim(&config, test_token.mint.pubkey(), pool_account_id, &test_claimer_1.wallet, None).unwrap();
 }

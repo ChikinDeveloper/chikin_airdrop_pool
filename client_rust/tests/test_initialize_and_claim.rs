@@ -39,7 +39,7 @@ async fn test_initialize_and_claim() {
         let rpc_client = RpcClient::new_with_commitment(rpc_url.to_string(),
                                                         CommitmentConfig::confirmed());
         let fee_payer = testutil::new_account_with_lamports(&rpc_client, 10_000_000);
-        let program_id = "3K1Td3DmxWt2rxT1H4furqWJyZu3nuc7QQs6W5rtHY3P";
+        let program_id = "ALaYfBMScNrJxKTfgpfFYDQSMYJHpzuxGq15TM2j6o8E";
 
         Config {
             rpc_client,
@@ -54,7 +54,7 @@ async fn test_initialize_and_claim() {
 
     println!("test_initialize: fee_payer_balance1={}", config.get_fee_payer_balance());
     println!("test_initialize: create test token");
-    let test_token = testutil::test_token::TestToken::create(&config);
+    let test_token = testutil::test_token::TestToken::create(&config, 6);
     println!("test_initialize: test_token.mint_authority={}", test_token.mint_authority.pubkey());
     println!("test_initialize: test_token.mint={}", test_token.mint.pubkey());
     println!("test_initialize: fee_payer_balance2={}", config.get_fee_payer_balance());
@@ -92,10 +92,7 @@ async fn test_initialize_and_claim() {
     assert_ne!(airdrop_pool.lamports, 0);
     assert_eq!(airdrop_pool.owner, config.id_config.program);
     let airdrop_pool_data = AirdropPool::unpack(airdrop_pool.data()).unwrap();
-    assert_eq!(airdrop_pool_data.is_initialized, 1);
-    assert_eq!(airdrop_pool_data.token_account_id, pool_token_account_id);
-    assert_eq!(airdrop_pool_data.account_id, pool_account_id);
-    assert_eq!(airdrop_pool_data.pool_account_nonce, pool_account_nonce);
+    assert_eq!(airdrop_pool_data.account_nonce, pool_account_nonce);
 
     let pool_token_account = config.rpc_client.get_account(&pool_token_account_id).unwrap();
     assert_ne!(pool_token_account.lamports, 0);
@@ -118,12 +115,27 @@ async fn test_initialize_and_claim() {
     println!("test_initialize: test_claimer_1.wallet={}", test_claimer_1.wallet.pubkey());
     println!("test_initialize: test_claimer_1.token_account={}", test_claimer_1.token_account);
 
-    testutil::debug_token_account("CLUCK claimer_token_account before", &config, &test_claimer_1.token_account);
-    testutil::debug_token_account("CLUCK pool_token_account before", &config, &pool_token_account_id);
+    testutil::debug_token_account("test_initialize: test_claimer_1.token_account before", &config, &test_claimer_1.token_account);
+    testutil::debug_token_account("test_initialize: pool_token_account before", &config, &pool_token_account_id);
 
     command::claim(&config, test_token.mint.pubkey(), pool_account_id, &test_claimer_1.wallet, None).unwrap();
 
-    testutil::debug_token_account("CLUCK claimer_token_account after ", &config, &test_claimer_1.token_account);
-    testutil::debug_token_account("CLUCK pool_token_account after", &config, &pool_token_account_id);
+    testutil::debug_token_account("test_initialize: test_claimer_1.token_account after ", &config, &test_claimer_1.token_account);
+    testutil::debug_token_account("test_initialize: pool_token_account after", &config, &pool_token_account_id);
     println!("test_initialize: fee_payer_balance6={}", config.get_fee_payer_balance());
+
+    //
+    println!("test_initialize: fee_payer_balance7={}", config.get_fee_payer_balance());
+    let test_claimer_2 = testutil::TestClaimer::create(&config, &test_token.mint.pubkey(), 10_000_000);
+    println!("test_initialize: test_claimer_2.wallet={}", test_claimer_2.wallet.pubkey());
+    println!("test_initialize: test_claimer_2.token_account={}", test_claimer_2.token_account);
+
+    testutil::debug_token_account("test_initialize: test_claimer_2.token_account before", &config, &test_claimer_2.token_account);
+    testutil::debug_token_account("test_initialize: pool_token_account before", &config, &pool_token_account_id);
+
+    command::claim(&config, test_token.mint.pubkey(), pool_account_id, &test_claimer_2.wallet, Some(test_claimer_1.wallet.pubkey())).unwrap();
+
+    testutil::debug_token_account("test_initialize: test_claimer_2.token_account after ", &config, &test_claimer_2.token_account);
+    testutil::debug_token_account("test_initialize: pool_token_account after", &config, &pool_token_account_id);
+    println!("test_initialize: fee_payer_balance8={}", config.get_fee_payer_balance());
 }

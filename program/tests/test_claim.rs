@@ -30,7 +30,7 @@ async fn test_claim() {
 
     let program_id = Pubkey::new_unique();
     let token_program_id = spl_token::id();
-    let token_mint_id = Pubkey::from_str("3K1Td3DmxWt2rxT1H4furqWJyZu3nuc7QQs6W5rtHY3P").unwrap();
+    let token_mint_id = Pubkey::from_str("ALaYfBMScNrJxKTfgpfFYDQSMYJHpzuxGq15TM2j6o8E").unwrap();
 
     println!("test_chikin_airdrop_pool: program_id={}", program_id);
     println!("test_chikin_airdrop_pool: token_program_id={}", token_program_id);
@@ -139,7 +139,7 @@ async fn test_user(banks_client: &mut BanksClient,
         .await
         .expect("user_account get_account failed")
         .expect("user_account not found");
-    let user_account_state: AirdropClaimer = AirdropClaimer::unpack(&user_account.data);
+    let user_account_state: AirdropClaimer = AirdropClaimer::unpack(&user_account.data).unwrap();
     assert_eq!(user_account_state.claimed, 1);
     assert_eq!(user_account_state.referrer_wallet, referrers.first().map(|e| e.wallet.pubkey()));
 

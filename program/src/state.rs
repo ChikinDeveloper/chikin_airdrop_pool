@@ -9,16 +9,13 @@ use crate::packable::Packable;
 pub struct AirdropPool {
     pub token_program_id: Pubkey,
     pub token_mint_id: Pubkey,
-    pub account_id: Pubkey,
-    pub token_account_id: Pubkey,
-    pub pool_account_nonce: [u8; 4],
+    pub account_nonce: [u8; 4],
     pub reward_per_account: u64,
     pub reward_per_referral: u64,
-    pub max_referral_depth: u32,
-    pub is_initialized: u8,
+    pub max_referral_depth: u8,
 }
 
-implement_packable!(AirdropPool, 153);
+implement_packable!(AirdropPool, 85);
 
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]

@@ -1,32 +1,18 @@
-use std::convert::TryFrom;
-use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 
-use chikin_airdrop_pool::config as program_config;
-use chikin_airdrop_pool::state::{AirdropClaimer, AirdropPool};
-use solana_client::client_error::ClientError;
 use solana_client::rpc_client::RpcClient;
 use solana_program::program_pack::Pack;
-use solana_program::sysvar::Sysvar;
-use solana_program_test::*;
 use solana_sdk::account::ReadableAccount;
-use solana_sdk::commitment_config::CommitmentConfig;
-use solana_sdk::program_error::ProgramError;
-use solana_sdk::program_option::COption;
 use solana_sdk::pubkey::Pubkey;
-use solana_sdk::rent::Rent;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 use solana_sdk::transaction::Transaction;
 use spl_associated_token_account;
 use spl_token::state::Account as SplTokenAccount;
-use spl_token::state::AccountState as SplTokenAccountState;
-use spl_token::state::Mint as SplTokenMint;
 
 use client_rust::client;
-use client_rust::command;
-use client_rust::config::{Config, IdConfig};
+use client_rust::config::{Config};
 
 pub mod test_token;
 

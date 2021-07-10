@@ -14,7 +14,7 @@ use std::str::FromStr;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_id() {
-    let program_id = Pubkey::from_str("3K1Td3DmxWt2rxT1H4furqWJyZu3nuc7QQs6W5rtHY3P").unwrap();
+    let program_id = Pubkey::from_str("ALaYfBMScNrJxKTfgpfFYDQSMYJHpzuxGq15TM2j6o8E").unwrap();
     let token_mint_id = Pubkey::from_str("8s9FCz99Wcr3dHpiauFRi6bLXzshXfcGTfgQE7UEopVx").unwrap();
     let pool_account_nonce = [1, 0, 1, 0];
     let claimer_wallet_id = Pubkey::from_str("DkmfiWSC4mnPvfMXZY2CkT4skvFkGr4u5DwRX2htRvJ2").unwrap();

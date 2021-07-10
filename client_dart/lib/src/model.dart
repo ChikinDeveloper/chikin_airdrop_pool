@@ -1,28 +1,22 @@
 import 'utils.dart' as utils;
 
 class AirdropPool {
-  static const packedSize = 153;
+  static const packedSize = 85;
 
   final List<int> tokenProgramId;
   final List<int> tokenMintId;
-  final List<int> accountId;
-  final List<int> tokenAccountId;
   final List<int> poolAccountNonce;
   final int rewardPerAccount;
   final int rewardPerReferral;
   final int maxReferralDepth;
-  final bool isInitialized;
 
   AirdropPool({
     required this.tokenProgramId,
     required this.tokenMintId,
-    required this.accountId,
-    required this.tokenAccountId,
     required this.poolAccountNonce,
     required this.rewardPerAccount,
     required this.rewardPerReferral,
     required this.maxReferralDepth,
-    required this.isInitialized,
   });
 
   static AirdropPool unpack(List<int> data) {
@@ -30,13 +24,10 @@ class AirdropPool {
     return AirdropPool(
       tokenProgramId: data.sublist(0, 32),
       tokenMintId: data.sublist(32, 64),
-      accountId: data.sublist(64, 96),
-      tokenAccountId: data.sublist(96, 128),
-      poolAccountNonce: data.sublist(128, 132),
-      rewardPerAccount: utils.unpackUInt(data.sublist(132, 140)),
-      rewardPerReferral: utils.unpackUInt(data.sublist(140, 148)),
-      maxReferralDepth: utils.unpackUInt(data.sublist(148, 152)),
-      isInitialized: data[152] != 0,
+      poolAccountNonce: data.sublist(64, 68),
+      rewardPerAccount: utils.unpackUInt(data.sublist(68, 76)),
+      rewardPerReferral: utils.unpackUInt(data.sublist(76, 84)),
+      maxReferralDepth: data[84],
     );
   }
 }

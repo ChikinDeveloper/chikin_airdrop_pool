@@ -12,6 +12,8 @@ pub enum AirdropPoolError {
     ProgramKeyMismatch,
     #[error("RentSysvarKeyMismatch")]
     RentSysvarKeyMismatch,
+    #[error("SystemProgramKeyMismatch")]
+    SystemProgramKeyMismatch,
     #[error("TokenProgramKeyMismatch")]
     TokenProgramKeyMismatch,
 
@@ -41,6 +43,12 @@ pub enum AirdropPoolError {
     #[error("AlreadyClaimed")]
     AlreadyClaimed,
 
+    #[error("InitPoolAccountFailed")]
+    InitPoolAccountFailed,
+    #[error("InitPoolTokenAccountFailed")]
+    InitPoolTokenAccountFailed,
+    #[error("InitClaimerAccountFailed")]
+    InitClaimerAccountFailed,
     #[error("TransferToUserFailed")]
     TransferToUserFailed,
     #[error("TransferToReferrerFailed")]
